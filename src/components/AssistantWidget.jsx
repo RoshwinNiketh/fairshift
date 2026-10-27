@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from './Icon.jsx';
 import { ASSISTANT_PROMPTS, answerAssistantQuery } from '../../shared/assistant.js';
 
 export default function AssistantWidget({ role, lang, org, worker, workers, shifts, reports, t }) {
@@ -7,7 +8,7 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
 
   const [messages, setMessages] = useState([]);
   const [customInput, setCustomInput] = useState('');
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Initialize or isolate conversation history whenever the context key changes
   useEffect(() => {
@@ -62,9 +63,9 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
   };
 
   return (
-    <section 
+    <section id="assistant"
       aria-label={t.assistantTitle}
-      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6"
+      className="assistant-widget bg-white rounded-2xl border border-slate-200 overflow-hidden"
     >
       {/* Semantic Accessible Header bar */}
       <button 
@@ -72,11 +73,11 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
         aria-controls="assistant-panel-content"
-        className="w-full text-left bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-4 flex justify-between items-center cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-emerald-400"
+        className="w-full text-left assistant-toggle text-white p-4 flex justify-between items-center cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-emerald-400"
       >
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-base shadow" aria-hidden="true">
-            💡
+            <Icon name="help"/>
           </div>
           <div>
             <div className="flex items-center space-x-2">
@@ -106,7 +107,7 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
                   key={p.id}
                   type="button"
                   onClick={() => handleQuery(p.text, p.id)}
-                  className="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-medium px-3 py-2 rounded-xl border border-slate-200 transition text-left cursor-pointer min-h-[38px] focus-visible:outline-2 focus-visible:outline-emerald-500"
+                  className="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-medium px-3 py-2 rounded-xl border border-slate-200 transition text-left cursor-pointer min-h-[44px] focus-visible:outline-2 focus-visible:outline-emerald-500"
                 >
                   {p.text}
                 </button>
@@ -162,7 +163,7 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
             <button
               type="submit"
               disabled={!customInput.trim()}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer min-h-[42px]"
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer min-h-[44px]"
             >
               {t.sendQuestion}
             </button>
@@ -170,7 +171,7 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
 
           {/* Grounding notice */}
           <div className="text-[11px] text-slate-500 bg-slate-100/80 p-2.5 rounded-xl flex items-center space-x-2">
-            <span className="text-emerald-600 font-bold" aria-hidden="true">🔒</span>
+            <span className="text-emerald-600 font-bold" aria-hidden="true"><Icon name="shield" size={16}/></span>
             <span>{t.groundedNotice}</span>
           </div>
         </div>

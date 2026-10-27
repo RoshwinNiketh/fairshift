@@ -1,5 +1,14 @@
 export const translations = {
   en: {
+    brandPromise: 'Fair work. Clear pay.',
+    skipContent: 'Skip to main content', languageLabel: 'Language', demoSettings: 'Demo settings', demoShort: 'Demo · synthetic data', roleDemoNotice: 'View switching is a demo control, not a secure login.',
+    workerWorkspace: 'WORKER WORKSPACE', employerWorkspace: 'WORKFORCE OPERATIONS', yourWorkday: 'Your workday, in view.', operationsTitle: 'A safer shift starts here.', workdaySubtitle: 'Track your time. Understand your pay. Make your voice heard.',
+    pageSections: 'Page sections', todayShift: 'Your shift', historyShort: 'History', safetyShort: 'Safety & reports', helpShort: 'Assistant', overviewShort: 'Overview', fatigueShort: 'Fatigue & rest',
+    onShift: 'On shift', offShift: 'Not checked in', readyToBegin: 'Ready for your shift?', shiftInProgress: 'Your shift is in progress.', startShiftHelp: 'Check in when you start work. We’ll keep track from here.', hoursUnit: 'hrs', hourUnit: 'hr', shiftSavedLocally: 'Shift records are saved in this browser.',
+    yourPayAtGlance: 'Your pay at a glance', overtimeRate: 'Overtime rate', overtimeAfter: 'Overtime applies after', estimateNotice: 'Estimates only; not a payslip.', speakUp: 'A safer workplace starts with you.', safetyShortcutHelp: 'Report a hazard, pay issue, or concern.', restReminder: 'Take a moment to check your rest.',
+    currentlyOnShift: 'currently on shift', completedShiftsOnly: 'Completed shifts · all records', criticalNeedAction: 'critical concerns need action', safetyNeedsAttention: 'Safety needs your attention.', reviewSafetyHelp: 'Review the priority queue and document your follow-up.',
+    yourRecords: 'TIME & EARNINGS', recordedEstimatedPay: 'Recorded estimated pay', workerSafety: 'YOUR VOICE MATTERS', followThrough: 'TRACK THE FOLLOW-UP', titlePlaceholder: 'A short summary of your concern', descriptionPlaceholder: 'What happened? Include the location and any risks.',
+    actionQueue: 'PRIORITY QUEUE', priorityExplanation: 'Unresolved concerns appear first, with critical risks at the top.', noOrgReports: 'No reports logged for this organization.', prevention: 'WORKLOAD & RECOVERY', rollingWork: '7-day recorded hours', cancel: 'Cancel', dismiss: 'Dismiss notification', resolutionPlaceholder: 'Describe the action taken and what happens next.',
     appName: "FairShift",
     tagline: "Transparent Shifts, Fair Pay & Worker Safety",
     sdgBadge: "SDG 8: Decent Work & Economic Growth",
@@ -105,6 +114,15 @@ export const translations = {
   },
 
   ta: {
+    brandPromise: 'நியாயமான வேலை. தெளிவான ஊதியம்.',
+    skipContent: 'முக்கிய உள்ளடக்கத்திற்குச் செல்', languageLabel: 'மொழி', demoSettings: 'டெமோ அமைப்புகள்', demoShort: 'டெமோ · மாதிரி தரவு', roleDemoNotice: 'பார்வை மாற்றம் டெமோ வசதி மட்டுமே; பாதுகாப்பான உள்நுழைவு அல்ல.',
+    workerWorkspace: 'தொழிலாளர் பணிப்பக்கம்', employerWorkspace: 'பணியாளர் நிர்வாகம்', yourWorkday: 'உங்கள் பணி நாள், தெளிவாக.', operationsTitle: 'பாதுகாப்பான பணி இங்கே தொடங்குகிறது.', workdaySubtitle: 'நேரத்தைப் பதிவு செய்யுங்கள். ஊதியத்தை அறியுங்கள். உங்கள் கருத்தைப் பகிருங்கள்.',
+    pageSections: 'பக்கப் பகுதிகள்', todayShift: 'உங்கள் பணி', historyShort: 'வரலாறு', safetyShort: 'பாதுகாப்பு & புகார்கள்', helpShort: 'வழிகாட்டி', overviewShort: 'கண்ணோட்டம்', fatigueShort: 'சோர்வு & ஓய்வு',
+    onShift: 'பணியில் உள்ளீர்கள்', offShift: 'பணி தொடங்கவில்லை', readyToBegin: 'பணியைத் தொடங்கத் தயாரா?', shiftInProgress: 'உங்கள் பணி நடைபெறுகிறது.', startShiftHelp: 'வேலை தொடங்கும்போது பதிவு செய்யுங்கள். நேரத்தை நாங்கள் கணக்கிடுகிறோம்.', hoursUnit: 'மணி', hourUnit: 'மணி', shiftSavedLocally: 'பணிப் பதிவுகள் இந்த உலாவியில் சேமிக்கப்படும்.',
+    yourPayAtGlance: 'உங்கள் ஊதிய விவரம்', overtimeRate: 'கூடுதல் நேர ஊதியம்', overtimeAfter: 'கூடுதல் நேர ஊதியம் தொடங்கும் வரம்பு:', estimateNotice: 'மதிப்பீடு மட்டுமே; சம்பளச் சீட்டு அல்ல.', speakUp: 'பாதுகாப்பான பணியிடம் உங்களிடமிருந்து தொடங்குகிறது.', safetyShortcutHelp: 'அபாயம், ஊதியச் சிக்கல் அல்லது புகாரைப் பதிவு செய்யுங்கள்.', restReminder: 'உங்கள் ஓய்வு நேரத்தைச் சரிபாருங்கள்.',
+    currentlyOnShift: 'பேர் தற்போது பணியில்', completedShiftsOnly: 'முடிக்கப்பட்ட பணிகளின் மொத்தப் பதிவு', criticalNeedAction: 'அவசரப் புகார்களுக்கு நடவடிக்கை தேவை', safetyNeedsAttention: 'பாதுகாப்பில் கவனம் தேவை.', reviewSafetyHelp: 'முன்னுரிமைப் புகார்களைப் பார்த்து நடவடிக்கையைப் பதிவு செய்யுங்கள்.',
+    yourRecords: 'நேரம் & ஊதியம்', recordedEstimatedPay: 'பதிவான மதிப்பீட்டு ஊதியம்', workerSafety: 'உங்கள் குரல் முக்கியம்', followThrough: 'நடவடிக்கையை அறியுங்கள்', titlePlaceholder: 'உங்கள் புகாரின் சுருக்கம்', descriptionPlaceholder: 'என்ன நடந்தது? இடம் மற்றும் அபாயங்களைக் குறிப்பிடுங்கள்.',
+    actionQueue: 'முன்னுரிமைப் புகார்கள்', priorityExplanation: 'தீர்க்கப்படாத புகார்கள் முதலில்; அவசர அபாயங்கள் மேலே காட்டப்படும்.', noOrgReports: 'இந்த நிறுவனத்தில் புகார்கள் இல்லை.', prevention: 'பணிச்சுமை & ஓய்வு', rollingWork: '7 நாட்களில் பதிவான பணி நேரம்', cancel: 'ரத்து செய்', dismiss: 'அறிவிப்பை மூடு', resolutionPlaceholder: 'எடுத்த நடவடிக்கை மற்றும் அடுத்த கட்டத்தை விவரிக்கவும்.',
     appName: "ஃபேர்ஷிஃப்ட் (FairShift)",
     tagline: "வெளிப்படையான பணி நேரம், நியாயமான ஊதியம் மற்றும் தொழிலாளர் பாதுகாப்பு",
     sdgBadge: "SDG 8: கண்ணியமான வேலை மற்றும் பொருளாதார வளர்ச்சி",
