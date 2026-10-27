@@ -1,0 +1,15 @@
+# Backend architecture (approved by sprint brief)
+
+The existing React/Vite UI and shared calculation engine remain. The Supabase SDK is the only new runtime dependency. `src/services/supabase.js` owns database requests and maps snake_case records to the existing application model. `WorkspaceGate` selects an explicit local demo or an authenticated shared workspace. Errors never route authenticated writes into local storage. Authenticated organization and role assignments come from database memberships protected by RLS. Accounts without memberships receive a visible access message.
+
+Trust boundaries: the browser supplies report content and skill/feedback input, but cannot assign roles, choose other workers for writes, alter wage rates, set shift timestamps, or change computed earnings. Atomic database functions derive the caller's worker from auth.uid(), lock the worker, and use server time. A unique partial index prevents concurrent check-ins. Public RPC wrappers are security invoker; privileged helpers live in an unexposed schema with pinned search paths and explicit authorization.
+
+Tables: organizations, user_profiles, organization_memberships, workers, shifts, safety_reports (including resolution fields), skill_passport_entries, worker_feedback. All have RLS. Worker SELECT is self-scoped; employers can read assigned-organization operational records. Feedback raw rows are readable only by their author. Employer aggregate RPC exposes no IDs/comments and suppresses fewer than three distinct contributors. DELETE is denied. Direct writes to memberships, wage rates, and shifts are denied. No self-enrollment into roles.
+
+Apply migration files in filename order, then seed.sql. Seed inserts synthetic records with ON CONFLICT DO NOTHING. It does not reset live records. Regenerate with `node scripts/generate-seed.mjs`. Create users using Supabase Authentication > Users > Add user; never commit credentials. Use the operator provisioning template to link users to workers and memberships. The public application has no hardcoded demo login passwords.
+
+Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in Vercel and local .env.local. These are public client configuration, not administrative credentials. Never provide secret/service_role/database credentials to Vite. Configure the production Auth Site URL and allowed redirects. The current login uses passwords and does not rely on redirects.
+
+Refresh: data refetches after mutation, every 15 seconds, and on focus/visibility. Realtime was deferred to keep schema replication and subscription complexity out of the sprint. Backend errors remain visible. No browser-local records are uploaded automatically.
+
+Additional UI: shared Skill Passport add/edit with SELF_REPORTED-only verification; workplace feedback and protected employer aggregates; printable estimated pay statements available in both modes. Voice, QR/location verification, feedback trend analytics, self-service invitations, and independent certificate verification are deferred.

@@ -12,17 +12,19 @@ import {
 } from '../shared/storage.js';
 import AssistantWidget from './components/AssistantWidget.jsx';
 import Icon from './components/Icon.jsx';
+import * as sharedApi from './services/supabase.js';
+import WorkerExtras from './components/WorkerExtras.jsx';
 
-export default function App() {
+export default function App({ cloud = null }) {
   const [lang, setLang] = useState('en');
   const t = translations[lang] || translations.en;
 
   // Global State (Managed through verified versioned local demo storage)
-  const [currentOrgId, setCurrentOrgId] = useState('org-buildright');
-  const [role, setRole] = useState('worker'); // 'worker' or 'employer' (Demonstration switch only)
+  const [currentOrgId, setCurrentOrgId] = useState(cloud?.data.organization.id || 'org-buildright');
+  const [role, setRole] = useState(cloud?.role || 'worker');
   
-  const [orgData, setOrgData] = useState(() => getLocalOrgData('org-buildright'));
-  const [currentWorkerId, setCurrentWorkerId] = useState('w-c1');
+  const [orgData, setOrgData] = useState(() => cloud?.data || getLocalOrgData('org-buildright'));
+  const [currentWorkerId, setCurrentWorkerId] = useState(cloud?.data.workers[0]?.id || 'w-c1');
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -47,8 +49,8 @@ export default function App() {
   };
 
   // Sync state from storage whenever orgId or language changes
-  const refreshCurrentOrg = (orgId = currentOrgId) => {
-    const data = getLocalOrgData(orgId);
+  const refreshCurrentOrg = async (orgId = currentOrgId) => {
+    const data = cloud ? await cloud.refresh(orgId) : getLocalOrgData(orgId);
     setOrgData(data);
     // P0/P2 Fix: Ensure currentWorkerId belongs to this organization
     setCurrentWorkerId(prevId => {
@@ -58,8 +60,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    refreshCurrentOrg(currentOrgId);
+    refreshCurrentOrg(currentOrgId).catch(err => showToast(err.message, 'error'));
   }, [currentOrgId, lang]);
+  useEffect(() => { if (cloud?.data) setOrgData(cloud.data); }, [cloud?.data]);
 
   const { organization: currentOrg, workers, shifts, reports, fatigueAlerts: storedFatigueAlerts } = orgData;
   // Use the existing calculation engine's translated messages without changing its rules.
@@ -93,12 +96,12 @@ export default function App() {
   }, [activeShift]);
 
   // Worker Check In Action (Guaranteed synchronous state persistence)
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!currentWorker) return;
     setActionLoading(true);
     try {
-      localCheckIn(currentWorker.id, currentOrgId);
-      refreshCurrentOrg(currentOrgId);
+      if (cloud) await sharedApi.checkIn(currentOrgId); else localCheckIn(currentWorker.id, currentOrgId);
+      await refreshCurrentOrg(currentOrgId);
       showToast(lang === 'ta' ? 'பணி வெற்றிகரமாக தொடங்கியது!' : 'Checked in successfully!', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to check in', 'error');
@@ -108,12 +111,12 @@ export default function App() {
   };
 
   // Worker Check Out Action (Guaranteed synchronous state persistence & earnings calculation)
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!currentWorker) return;
     setActionLoading(true);
     try {
-      const { earnings } = localCheckOut(currentWorker.id, 'Completed full scheduled duties');
-      refreshCurrentOrg(currentOrgId);
+      const { earnings } = cloud ? await sharedApi.checkOut(currentOrgId) : localCheckOut(currentWorker.id, 'Completed full scheduled duties');
+      await refreshCurrentOrg(currentOrgId);
       showToast(
         lang === 'ta'
           ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: ${sym}${earnings.totalEstimatedEarnings}`
@@ -128,7 +131,7 @@ export default function App() {
   };
 
   // Submit Safety Report Action
-  const handleSubmitReport = (e) => {
+  const handleSubmitReport = async (e) => {
     e.preventDefault();
     if (!reportTitle.trim() || !reportDescription.trim()) {
       showToast(lang === 'ta' ? 'புகாரின் தலைப்பு மற்றும் விவரத்தை வழங்கவும்.' : 'Please provide both an issue title and description.', 'error');
@@ -136,7 +139,7 @@ export default function App() {
     }
     setActionLoading(true);
     try {
-      localSubmitReport({
+      await (cloud ? sharedApi.submitReport : localSubmitReport)({
         workerId: currentWorker.id,
         orgId: currentOrgId,
         category: reportCategory,
@@ -146,7 +149,7 @@ export default function App() {
       });
       setReportTitle('');
       setReportDescription('');
-      refreshCurrentOrg(currentOrgId);
+      await refreshCurrentOrg(currentOrgId);
       showToast(lang === 'ta' ? 'பாதுகாப்பு குறைபாடு பதிவு செய்யப்பட்டது!' : 'Safety concern submitted successfully!', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to submit report', 'error');
@@ -156,13 +159,13 @@ export default function App() {
   };
 
   // Supervisor Status Update Action
-  const handleUpdateReportStatus = () => {
+  const handleUpdateReportStatus = async () => {
     if (!selectedReportToResolve) return;
     try {
-      localUpdateReportStatus(selectedReportToResolve.id, resolutionStatus, resolutionText);
+      await (cloud ? sharedApi.updateReport : localUpdateReportStatus)(selectedReportToResolve.id, resolutionStatus, resolutionText);
       setSelectedReportToResolve(null);
       setResolutionText('');
-      refreshCurrentOrg(currentOrgId);
+      await refreshCurrentOrg(currentOrgId);
       showToast(lang === 'ta' ? 'புகாரின் நிலை மற்றும் தீர்வு குறிப்பு சேமிக்கப்பட்டது.' : 'Report status and resolution note saved.', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update report', 'error');
@@ -192,7 +195,7 @@ export default function App() {
   const totalOvertimeHoursSum = shifts.filter(s => s.endTime).reduce((acc, s) => acc + (s.overtimeHours || 0), 0);
   const openReportsCount = reports.filter(r => r.status === 'OPEN' || r.status === 'IN_REVIEW').length;
 
-  const storedState = getStoredState();
+  const storedState = cloud ? { organizations: cloud.orgs } : getStoredState();
   const allOrgs = storedState.organizations || [];
 
   const locale = lang === 'ta' ? 'ta-IN' : 'en-IN';
@@ -227,10 +230,10 @@ export default function App() {
             <span className="brand-mark" aria-hidden="true"><Icon name="shield" size={25}/></span>
             <span><strong>FairShift<span className="brand-dot">.</span></strong><small>{t.brandPromise}</small></span>
           </a>
-          <nav className="role-nav" aria-label={t.switchRole}>
+          <nav className="role-nav" aria-label={t.switchRole}>{cloud ? <><span className="button">{role === 'worker' ? t.workerRole : t.employerRole} · Shared</span><button type="button" onClick={cloud.signOut}>Sign out / வெளியேறு</button></> : <>
             <button type="button" aria-pressed={role === 'worker'} onClick={() => setRole('worker')}>{t.workerRole}</button>
             <button type="button" aria-pressed={role === 'employer'} onClick={() => setRole('employer')}>{t.employerRole}</button>
-          </nav>
+          </>}</nav>
           <div className="language-switch" aria-label={t.languageLabel} role="group">
             <button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>EN</button>
             <button type="button" lang="ta" aria-pressed={lang === 'ta'} onClick={() => setLang('ta')}>தமிழ்</button>
@@ -240,16 +243,16 @@ export default function App() {
 
       <div className="workspace-bar">
         <div className="workspace-inner">
-          <label className="org-select"><span>{t.activeOrg}</span><select value={currentOrgId} onChange={e => setCurrentOrgId(e.target.value)} aria-label={t.activeOrg}>{allOrgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
-          <details className="demo-settings"><summary>{t.demoSettings}<Icon name="chevron" size={16}/></summary><div className="demo-popover"><p>{t.syntheticDataNote}</p><p>{t.roleDemoNotice}</p><p>{t.storageModeBadge}</p><button className="button button-secondary" type="button" onClick={handleResetData}><Icon name="reset" size={16}/>{t.resetDemoData}</button></div></details>
-          <span className="demo-label">{t.demoShort}</span>
+          <label className="org-select"><span>{t.activeOrg}</span><select value={currentOrgId} onChange={e => cloud ? cloud.selectOrg(e.target.value) : setCurrentOrgId(e.target.value)} aria-label={t.activeOrg}>{allOrgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+          {!cloud && <details className="demo-settings"><summary>{t.demoSettings}<Icon name="chevron" size={16}/></summary><div className="demo-popover"><p>{t.syntheticDataNote}</p><p>{t.roleDemoNotice}</p><p>{t.storageModeBadge}</p><button className="button button-secondary" type="button" onClick={handleResetData}><Icon name="reset" size={16}/>{t.resetDemoData}</button></div></details>}
+          <span className="demo-label">{cloud ? 'Authenticated · Shared database' : t.demoShort}</span>
         </div>
       </div>
 
       <main id="main-content" className="page-content" tabIndex={-1}>
         <div className="page-heading">
           <div><p className="eyebrow">{role === 'worker' ? t.workerWorkspace : t.employerWorkspace}</p><h1>{role === 'worker' ? t.yourWorkday : t.operationsTitle}</h1><p className="muted">{role === 'worker' ? t.workdaySubtitle : currentOrg.industry}</p></div>
-          {role === 'worker' ? <label className="worker-select"><span>{t.selectWorker}</span><select value={currentWorkerId} onChange={e => setCurrentWorkerId(e.target.value)} aria-label={t.selectWorker}>{workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label> : <span className="org-caption">{currentOrg.name}</span>}
+          {role === 'worker' ? <label className="worker-select"><span>{t.selectWorker}</span><select value={currentWorkerId} disabled={cloud && role === 'worker'} onChange={e => setCurrentWorkerId(e.target.value)} aria-label={t.selectWorker}>{workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label> : <span className="org-caption">{currentOrg.name}</span>}
         </div>
 
         <nav className="section-nav" aria-label={t.pageSections}>
@@ -266,7 +269,7 @@ export default function App() {
               <div className="live-metrics"><div><span>{t.elapsedTime}</span><strong>{activeShift ? liveElapsedHours.toFixed(2) : '0.00'}<small> {t.hoursUnit}</small></strong></div><div><span>{t.estimatedLivePay}</span><strong className="pay-value">{money(liveEarnings?.totalEstimatedEarnings)}</strong></div></div>
               {liveEarnings?.isOvertime && <p className="overtime-live">{t.overtimeBadge} · {liveEarnings.overtimeHours.toFixed(2)} {t.hoursUnit} × {currentOrg.settings.overtimeMultiplier}</p>}
               <button type="button" className="button shift-action" onClick={activeShift ? handleCheckOut : handleCheckIn} disabled={actionLoading}><Icon name="clock"/>{actionLoading ? (activeShift ? t.checkingOut : t.checkingIn) : (activeShift ? t.checkOut : t.checkIn)}<Icon name="arrow"/></button>
-              <p className="shift-save-note"><Icon name="check" size={14}/>{t.shiftSavedLocally}</p>
+              <p className="shift-save-note"><Icon name="check" size={14}/>{cloud ? (lang === 'ta' ? 'பதிவுகள் பகிரப்பட்ட தரவுத்தளத்தில் சேமிக்கப்படும்.' : 'Records saved to your shared workspace.') : t.shiftSavedLocally}</p>
             </section>
             <aside className="worker-summary">
               <section className="card pay-card"><div className="section-heading"><h2>{t.yourPayAtGlance}</h2><Icon name="clock" size={18}/></div><p className="muted worker-role">{currentWorker?.name} · {currentWorker?.role}</p><dl className="pay-rules"><div><dt>{t.hourlyRateLabel}</dt><dd>{money(currentWorker?.hourlyRate)}<small> / {t.hourUnit}</small></dd></div><div><dt>{t.standardHoursLimit}</dt><dd>{currentOrg.settings.standardDailyHours} {t.hoursUnit}</dd></div><div><dt>{t.overtimeRate}</dt><dd>{currentOrg.settings.overtimeMultiplier}× <small>({money((currentWorker?.hourlyRate || 0) * currentOrg.settings.overtimeMultiplier)} / {t.hourUnit})</small></dd></div></dl><p className="info-note">{t.overtimeAfter} {currentOrg.settings.standardDailyHours} {t.hoursUnit}. {t.estimateNotice}</p></section>
@@ -284,7 +287,7 @@ export default function App() {
           {criticalCount > 0 && <a className="notice notice-danger" href="#concerns"><Icon name="warning"/><div><strong>{t.safetyNeedsAttention}</strong><p>{criticalCount} {t.criticalNeedAction}. {t.reviewSafetyHelp}</p></div><Icon name="arrow"/></a>}
         </>}
 
-        <AssistantWidget key={contextKey} role={role} lang={lang} org={currentOrg} worker={currentWorker} workers={workers} shifts={shifts} reports={reports} t={t}/>
+        <WorkerExtras cloud={cloud} worker={currentWorker} org={currentOrg} shifts={workerPastShifts} role={role} lang={lang}/><AssistantWidget key={contextKey} role={role} lang={lang} org={currentOrg} worker={currentWorker} workers={workers} shifts={shifts} reports={reports} t={t}/>
 
         {role === 'worker' ? <>
           <section id="history" className="card history-card" aria-labelledby="history-title"><div className="section-heading"><div><p className="eyebrow">{t.yourRecords}</p><h2 id="history-title">{t.recentShifts}</h2></div><div className="history-total"><span>{t.recordedEstimatedPay}</span><strong>{money(workerRecordedPay)}</strong></div></div>
@@ -301,7 +304,7 @@ export default function App() {
           <div className="operations-side"><section id="fatigue" className="card" aria-labelledby="fatigue-title"><div className="section-heading"><div><p className="eyebrow">{t.prevention}</p><h2 id="fatigue-title">{t.fatigueRiskAlerts}</h2></div><span className="count-label">{fatigueAlerts.length}</span></div><p className="muted section-description">{t.fatigueAlertSummary}</p>{fatigueAlerts.length === 0 ? <p className="notice notice-success">{t.noFatigueAlerts}</p> : <div className="fatigue-list">{fatigueAlerts.map((alert, idx) => <article className="fatigue-item" key={idx}><div className="report-meta"><strong>{alert.workerName}</strong><span className="severity-label severity-high">{severityLabel(alert.riskLevel)}</span></div><p className="muted">{alert.role}</p><ul>{alert.warnings.map((w, i) => <li key={i}>{w.message}</li>)}</ul><p className="rolling-hours">{t.rollingWork}: <strong>{alert.totalHoursLast7Days} {t.hoursUnit}</strong></p></article>)}</div>}</section><section className="card work-rules"><h2>{t.orgConfigTitle}</h2><dl className="pay-rules"><div><dt>{t.dailyThreshold}</dt><dd>{currentOrg.settings.standardDailyHours}h</dd></div><div><dt>{t.otMultiplier}</dt><dd>{currentOrg.settings.overtimeMultiplier}×</dd></div><div><dt>{t.maxDailyThreshold}</dt><dd>{currentOrg.settings.maxDailyHoursThreshold}h</dd></div><div><dt>{t.minRestInterval}</dt><dd>{currentOrg.settings.minRestHoursThreshold}h</dd></div></dl></section></div>
         </div>}
       </main>
-      <footer className="app-footer"><div><strong>FairShift.</strong><span>{t.sdgBadge}</span></div><p>{t.syntheticDataNote} · {t.storageModeBadge}</p><p>{t.disclaimer}</p></footer>
+      <footer className="app-footer"><div><strong>FairShift.</strong><span>{t.sdgBadge}</span></div><p>{cloud ? 'Authenticated shared workspace · Assigned access · Synthetic demo records' : `${t.syntheticDataNote} · ${t.storageModeBadge}`}</p><p>{t.disclaimer}</p></footer>
       {toast && <div className={`toast ${toast.type === 'error' ? 'toast-error' : ''}`} role={toast.type === 'error' ? 'alert' : 'status'}><Icon name={toast.type === 'error' ? 'warning' : 'check'}/><span>{toast.message}</span><button type="button" aria-label={t.dismiss} onClick={() => setToast(null)}>×</button></div>}
       {selectedReportToResolve && <ResolutionDialog report={selectedReportToResolve} t={t} status={resolutionStatus} setStatus={setResolutionStatus} note={resolutionText} setNote={setResolutionText} onClose={() => setSelectedReportToResolve(null)} onSave={handleUpdateReportStatus}/>}
       {resetDialogOpen && <ResetDialog t={t} lang={lang} onClose={() => setResetDialogOpen(false)} onReset={() => { resetStoredState(); refreshCurrentOrg(currentOrgId); setResetDialogOpen(false); showToast(t.demoResetSuccess); }}/>}

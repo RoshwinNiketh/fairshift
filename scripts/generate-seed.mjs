@@ -1,0 +1,12 @@
+import { INITIAL_DATA } from '../shared/seedData.js';
+import { writeFileSync } from 'node:fs';
+const q=v=>v==null?'null':typeof v==='number'?String(v):"'"+String(typeof v==='object'?JSON.stringify(v):v).replaceAll("'","''")+"'";
+const insert=(table,columns,rows)=>rows.map(row=>`insert into public.${table} (${columns.join(',')}) values (${row.map(q).join(',')}) on conflict(id) do nothing;`).join('\n');
+const d=INITIAL_DATA;
+let sql='begin;\n-- Synthetic fixtures only. Never resets or overwrites existing records.\n';
+sql+=insert('organizations',['id','name','industry','currency','symbol','settings'],d.organizations.map(o=>[o.id,o.name,o.industry,o.currency,o.symbol,o.settings]))+'\n';
+sql+=insert('workers',['id','org_id','name','role','hourly_rate'],d.workers.map(w=>[w.id,w.orgId,w.name,w.role,w.hourlyRate]))+'\n';
+const cols=['id','org_id','worker_id','start_time','end_time','hours','hourly_rate','standard_hours','overtime_multiplier','regular_hours','overtime_hours','regular_pay','overtime_pay','total_estimated_earnings','notes'];
+sql+=insert('shifts',cols,d.shifts.map(s=>[s.id,s.orgId,s.workerId,s.startTime,s.endTime,s.hours,s.hourlyRate,s.standardHours,d.organizations.find(o=>o.id===s.orgId).settings.overtimeMultiplier,s.regularHours,s.overtimeHours,s.regularPay,s.overtimePay,s.totalEstimatedEarnings,s.notes]))+'\n';
+sql+=insert('safety_reports',['id','org_id','worker_id','category','severity','title','description','status','submitted_at','resolved_at','resolution_note'],d.reports.map(r=>[r.id,r.orgId,r.workerId,r.category,r.severity,r.title,r.description,r.status,r.submittedAt,r.resolvedAt||null,r.resolutionNote||'']))+'\ncommit;\n';
+writeFileSync(new URL('../supabase/seed.sql',import.meta.url),sql);

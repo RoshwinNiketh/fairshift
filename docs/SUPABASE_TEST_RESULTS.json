@@ -1,0 +1,67 @@
+{
+  "project": "https://vfrifuywbkxlcoueaxqy.supabase.co",
+  "executedAt": "2026-10-27T07:18:00.396Z",
+  "kind": "Actual remote Supabase API integration tests, separate authenticated clients; not browser or physical-device tests",
+  "results": [
+    {
+      "name": "Worker and employer authenticate against real Supabase",
+      "passed": true
+    },
+    {
+      "name": "All 8 tables deny unauthenticated data access",
+      "passed": true
+    },
+    {
+      "name": "Worker sees only own worker record",
+      "passed": true
+    },
+    {
+      "name": "Other worker private records are filtered by RLS",
+      "passed": true
+    },
+    {
+      "name": "Worker and employer cross-organization reads are denied",
+      "passed": true
+    },
+    {
+      "name": "Role promotion, wage tampering, and forged shift inserts are denied",
+      "passed": true
+    },
+    {
+      "name": "Cross-organization check-in is denied",
+      "passed": true
+    },
+    {
+      "name": "Server-timed check-in/out, duplicate prevention, and pay calculation match",
+      "passed": true
+    },
+    {
+      "name": "Worker report is visible in separate employer Auth session",
+      "passed": true
+    },
+    {
+      "name": "Cross-worker reporting and worker self-resolution are denied",
+      "passed": true
+    },
+    {
+      "name": "Employer resolution and audit metadata reach the worker",
+      "passed": true
+    },
+    {
+      "name": "Skill records persist and edit; false verification is rejected",
+      "passed": true
+    },
+    {
+      "name": "Feedback author privacy, 3-contributor suppression, and summary authorization hold",
+      "passed": true
+    },
+    {
+      "name": "Records persist in a newly authenticated client session",
+      "passed": true
+    },
+    {
+      "name": "Client delete attempts denied",
+      "passed": true
+    }
+  ]
+}

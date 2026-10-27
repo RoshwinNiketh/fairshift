@@ -1,0 +1,17 @@
+# Supabase sprint verification — 27 October 2026
+
+Project: https://vfrifuywbkxlcoueaxqy.supabase.co (Free plan, FairShift).
+
+Created and applied the application schema/RLS migration and profile trigger migration using the authenticated Supabase dashboard. Initialized both synthetic industry scenarios with insert-only idempotent seed statements. Created one synthetic BuildRight worker Auth account and one assigned employer Auth account through the dashboard. Credentials are in the ignored local file `.qa-accounts.local`; no database password was saved. `.env.local` contains only public browser configuration and is ignored.
+
+Executed `node scripts/verify-supabase.mjs` against the actual remote Supabase project: **15 checks passed**. See SUPABASE_TEST_RESULTS.json. These are actual remote Auth/PostgREST/RPC tests with separate authenticated clients, not mocked tests and not physical-device tests. Covered all-table unauthenticated denial, own-worker reads, other-worker isolation, organization isolation for worker and employer, role escalation denial, rate tampering denial, forged shift denial, cross-org check-in denial, server check-in/out, concurrent-active-shift prevention, calculation agreement, shared reporting/resolution with audit metadata, unauthorized report writes, skill add/edit and persistence, rejection of false verification, feedback privacy and threshold suppression, new-session persistence, and denied deletes.
+
+Separate real-browser verification used an authenticated worker in the in-app browser and an authenticated employer in Chrome profile 4. The other Chrome profile was not modified. The worker submitted a report; the employer saw and resolved it; after refetch, the worker saw the same resolution note. Skill Passport add and workplace feedback submission both reported success through the UI. Local demo and unconfigured-backend login messaging were also checked. Estimated pay statement contents were inspected. Actual OS printing/PDF output was not exercised.
+
+`npm test`: **40 passed, 0 failed**. Existing browser_smoke.test.js remains mocked storage testing. `npm run build`: **passed**. `git diff --check`: **passed**. Public client configuration was saved in the existing Vercel project's Production environment. No Supabase secret/service_role key or database password is present in the client configuration. The Auth Site URL is the production URL; production redirect is configured separately in Supabase.
+
+Limitations: employer feedback summaries are intentionally withheld with fewer than 3 distinct contributors; only the privacy-suppressed state was exercised in this sprint. No physical-device test or independently verified certifications. Realtime, trend analytics, self-service membership provisioning, voice, and secure QR/location verification are deferred. Shared-mode college login accounts were not created; the college organization/records exist, are isolated, and remain available in standalone demo. Additional accounts can be assigned via the provisioning template. Refetch occurs after writes, every 15 seconds, and on focus.
+
+Dependency audit found a pre-existing high-severity body-parser advisory in the retained Express backend; the static Vercel frontend does not run that server. No broad dependency upgrades were attempted during this timebox. Production auth/role workflow is the new Supabase path, not that Express server.
+
+The sprint was extended for the user's Supabase reauthentication and final verification. No official evaluation submission was made.
