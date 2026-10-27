@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { calculateDurationHours, calculateShiftEarnings, evaluateFatigueRisk } from '../shared/calculations.js';
+import { INITIAL_DATA } from '../shared/seedData.js';
 
 test('calculateDurationHours calculates correct hours', () => {
   const start = '2026-10-27T08:00:00Z';
@@ -57,4 +58,15 @@ test('evaluateFatigueRisk triggers insufficient rest warning between shifts', ()
   const restWarning = risk.warnings.find(w => w.type === 'INSUFFICIENT_REST');
   assert.ok(restWarning);
   assert.strictEqual(restWarning.severity, 'CRITICAL');
+});
+
+test('Seed data organizations are properly partitioned', () => {
+  assert.strictEqual(INITIAL_DATA.organizations.length, 2);
+  const bWorkers = INITIAL_DATA.workers.filter(w => w.orgId === 'org-buildright');
+  const aWorkers = INITIAL_DATA.workers.filter(w => w.orgId === 'org-apexcollege');
+  assert.ok(bWorkers.length >= 2);
+  assert.ok(aWorkers.length >= 2);
+  // Ensure no cross-org ID leakage
+  const intersection = bWorkers.filter(bw => aWorkers.some(aw => aw.id === bw.id));
+  assert.strictEqual(intersection.length, 0);
 });

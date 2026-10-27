@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { translations } from '../shared/i18n.js';
-import { calculateShiftEarnings, calculateDurationHours, DISCLAIMER_TEXT } from '../shared/calculations.js';
+import { calculateShiftEarnings, calculateDurationHours, evaluateFatigueRisk } from '../shared/calculations.js';
 import { INITIAL_DATA } from '../shared/seedData.js';
 
 export default function App() {
@@ -10,7 +10,7 @@ export default function App() {
   // Global State
   const [orgs, setOrgs] = useState(INITIAL_DATA.organizations);
   const [currentOrgId, setCurrentOrgId] = useState('org-buildright');
-  const [role, setRole] = useState('worker'); // 'worker' or 'employer'
+  const [role, setRole] = useState('worker'); // 'worker' or 'employer' (Demonstration switch only)
   
   const [workers, setWorkers] = useState([]);
   const [currentWorkerId, setCurrentWorkerId] = useState('');
@@ -20,7 +20,7 @@ export default function App() {
   
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
   // Live Timer for active shift
   const [liveElapsedHours, setLiveElapsedHours] = useState(0);
@@ -36,7 +36,36 @@ export default function App() {
   const [resolutionStatus, setResolutionStatus] = useState('RESOLVED');
   const [resolutionText, setResolutionText] = useState('');
 
-  // Load organization data from API with fallback to local seed
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  };
+
+  // Recompute fatigue alerts from current client state
+  const recomputeAlerts = (wList, sList, org) => {
+    const alerts = [];
+    wList.forEach(w => {
+      const wShifts = sList.filter(s => s.workerId === w.id);
+      const risk = evaluateFatigueRisk(wShifts, {
+        maxDailyHours: org.settings.maxDailyHoursThreshold,
+        minRestHours: org.settings.minRestHoursThreshold,
+        maxWeeklyHours: org.settings.maxWeeklyHoursThreshold
+      });
+      if (risk.hasWarning) {
+        alerts.push({
+          workerId: w.id,
+          workerName: w.name,
+          role: w.role,
+          riskLevel: risk.riskLevel,
+          warnings: risk.warnings,
+          totalHoursLast7Days: risk.totalHoursLast7Days
+        });
+      }
+    });
+    return alerts;
+  };
+
+  // Load organization data from API
   const fetchData = async (orgId) => {
     try {
       const res = await fetch(`/api/org/${orgId}/data`);
@@ -46,25 +75,32 @@ export default function App() {
         setShifts(data.shifts || []);
         setReports(data.reports || []);
         setFatigueAlerts(data.fatigueAlerts || []);
-        if (data.workers && data.workers.length > 0 && !currentWorkerId) {
-          setCurrentWorkerId(data.workers[0].id);
+        if (data.workers && data.workers.length > 0) {
+          // If current worker doesn't belong to this org, select first worker
+          const currentBelongs = data.workers.some(w => w.id === currentWorkerId);
+          if (!currentBelongs) {
+            setCurrentWorkerId(data.workers[0].id);
+          }
         }
       } else {
-        fallbackLocalData(orgId);
+        const errJson = await res.json().catch(() => ({}));
+        showToast(errJson.error || `Failed to fetch data for organization ${orgId}`, 'error');
       }
     } catch (err) {
-      fallbackLocalData(orgId);
+      // In offline/static-preview scenario, fallback gracefully to initial seed data
+      const org = orgs.find(o => o.id === orgId) || orgs[0];
+      const orgWorkers = INITIAL_DATA.workers.filter(w => w.orgId === orgId);
+      const orgShifts = INITIAL_DATA.shifts.filter(s => s.orgId === orgId);
+      const orgReports = INITIAL_DATA.reports.filter(r => r.orgId === orgId);
+      setWorkers(orgWorkers);
+      setShifts(orgShifts);
+      setReports(orgReports);
+      setFatigueAlerts(recomputeAlerts(orgWorkers, orgShifts, org));
+      if (orgWorkers.length > 0) setCurrentWorkerId(orgWorkers[0].id);
+      showToast('Operating in local-storage demo mode (server unreachable)', 'error');
     } finally {
       setLoading(false);
     }
-  };
-
-  const fallbackLocalData = (orgId) => {
-    const orgWorkers = INITIAL_DATA.workers.filter(w => w.orgId === orgId);
-    setWorkers(orgWorkers);
-    setShifts(INITIAL_DATA.shifts.filter(s => s.orgId === orgId));
-    setReports(INITIAL_DATA.reports.filter(r => r.orgId === orgId));
-    if (orgWorkers.length > 0) setCurrentWorkerId(orgWorkers[0].id);
   };
 
   useEffect(() => {
@@ -92,11 +128,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activeShift]);
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4000);
-  };
-
   // Worker Check In Action
   const handleCheckIn = async () => {
     if (!currentWorker) return;
@@ -108,14 +139,14 @@ export default function App() {
         body: JSON.stringify({ workerId: currentWorker.id, orgId: currentOrgId })
       });
       if (res.ok) {
-        showToast(lang === 'ta' ? 'பணி வெற்றிகரமாக தொடங்கியது!' : 'Checked in successfully!');
+        showToast(lang === 'ta' ? 'பணி வெற்றிகரமாக தொடங்கியது!' : 'Checked in successfully!', 'success');
         await fetchData(currentOrgId);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to check in');
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to check in on server', 'error');
       }
     } catch {
-      // Local fallback simulation
+      // Offline fallback: update local state genuinely and consistently
       const newShift = {
         id: `sh-${Date.now()}`,
         orgId: currentOrgId,
@@ -131,9 +162,9 @@ export default function App() {
         overtimePay: 0,
         totalEstimatedEarnings: 0
       };
-      setShifts([newShift, ...shifts]);
-      currentWorker.activeShiftId = newShift.id;
-      showToast('Checked in (Local mode)');
+      setShifts(prev => [newShift, ...prev]);
+      setWorkers(prev => prev.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: newShift.id } : w));
+      showToast('Checked in locally (offline fallback)', 'success');
     } finally {
       setActionLoading(false);
     }
@@ -147,18 +178,47 @@ export default function App() {
       const res = await fetch('/api/shifts/check-out', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId: currentWorker.id, notes: 'Completed full scheduled duties' })
+        body: JSON.stringify({ workerId: currentWorker.id, notes: 'Completed shift duties' })
       });
       if (res.ok) {
         const data = await res.json();
-        showToast(lang === 'ta' ? `பணி முடிந்தது! ஈட்டிய ஊதியம்: $${data.earnings?.totalEstimatedEarnings}` : `Checked out! Estimated Earnings: $${data.earnings?.totalEstimatedEarnings}`);
+        showToast(
+          lang === 'ta'
+            ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: $${data.earnings?.totalEstimatedEarnings}`
+            : `Checked out successfully! Estimated Earnings: $${data.earnings?.totalEstimatedEarnings}`,
+          'success'
+        );
         await fetchData(currentOrgId);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to check out');
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Check out failed on server', 'error');
       }
     } catch {
-      showToast('Check out recorded');
+      // Offline fallback: genuine state calculation & persistence
+      if (activeShift) {
+        const endTime = new Date().toISOString();
+        const duration = calculateDurationHours(activeShift.startTime, endTime);
+        const earnings = calculateShiftEarnings(
+          duration,
+          currentWorker.hourlyRate,
+          currentOrg.settings.standardDailyHours,
+          currentOrg.settings.overtimeMultiplier
+        );
+        const updatedShift = {
+          ...activeShift,
+          endTime,
+          hours: duration,
+          ...earnings
+        };
+        const updatedShifts = shifts.map(s => s.id === activeShift.id ? updatedShift : s);
+        setShifts(updatedShifts);
+        const updatedWorkers = workers.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: null } : w);
+        setWorkers(updatedWorkers);
+        setFatigueAlerts(recomputeAlerts(updatedWorkers, updatedShifts, currentOrg));
+        showToast(`Checked out locally. Estimated: $${earnings.totalEstimatedEarnings}`, 'success');
+      } else {
+        showToast('Check out failed: no active shift found', 'error');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -167,7 +227,10 @@ export default function App() {
   // Submit Safety Report
   const handleSubmitReport = async (e) => {
     e.preventDefault();
-    if (!reportTitle.trim() || !reportDescription.trim()) return;
+    if (!reportTitle.trim() || !reportDescription.trim()) {
+      showToast('Please provide both an issue title and description.', 'error');
+      return;
+    }
     setActionLoading(true);
     try {
       const res = await fetch('/api/reports', {
@@ -185,11 +248,31 @@ export default function App() {
       if (res.ok) {
         setReportTitle('');
         setReportDescription('');
-        showToast(lang === 'ta' ? 'புகார் பதிவு செய்யப்பட்டது!' : 'Safety concern submitted successfully!');
+        showToast(lang === 'ta' ? 'பாதுகாப்பு குறைபாடு பதிவு செய்யப்பட்டது!' : 'Safety concern submitted successfully!', 'success');
         await fetchData(currentOrgId);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to submit report to server', 'error');
       }
     } catch {
-      showToast('Report submitted (Local mode)');
+      // Offline fallback: record report genuinely in local state
+      const newRep = {
+        id: `rep-${Date.now()}`,
+        orgId: currentOrgId,
+        workerId: currentWorker.id,
+        workerName: currentWorker.name,
+        category: reportCategory,
+        severity: reportSeverity,
+        title: reportTitle.trim(),
+        description: reportDescription.trim(),
+        status: 'OPEN',
+        submittedAt: new Date().toISOString(),
+        resolutionNote: ''
+      };
+      setReports(prev => [newRep, ...prev]);
+      setReportTitle('');
+      setReportDescription('');
+      showToast('Report recorded in local state (offline mode)', 'success');
     } finally {
       setActionLoading(false);
     }
@@ -208,13 +291,30 @@ export default function App() {
         })
       });
       if (res.ok) {
-        showToast('Report status updated successfully.');
+        showToast('Report status and resolution note saved.', 'success');
         setSelectedReportToResolve(null);
         setResolutionText('');
         await fetchData(currentOrgId);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to update report status on server', 'error');
       }
     } catch {
-      showToast('Updated report status');
+      // Offline fallback: update local state genuinely
+      setReports(prev => prev.map(r => {
+        if (r.id === selectedReportToResolve.id) {
+          return {
+            ...r,
+            status: resolutionStatus,
+            resolutionNote: resolutionText.trim(),
+            ...(resolutionStatus === 'RESOLVED' ? { resolvedAt: new Date().toISOString() } : {})
+          };
+        }
+        return r;
+      }));
+      showToast('Status updated in local state (offline mode)', 'success');
+      setSelectedReportToResolve(null);
+      setResolutionText('');
     }
   };
 
@@ -238,15 +338,15 @@ export default function App() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 font-sans">
-      {/* Top Banner / Notice */}
+      {/* Top Banner: Explicit Synthetic Demonstration Label */}
       <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded mb-4 flex flex-wrap justify-between items-center text-xs text-amber-900 gap-2">
-        <div className="flex items-center space-x-2">
-          <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] uppercase tracking-wide">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] uppercase tracking-wide inline-block">
             {t.syntheticDataNote}
           </span>
-          <span>{t.disclaimer}</span>
+          <span className="text-amber-800">{t.disclaimer}</span>
         </div>
-        <div className="font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full">
+        <div className="font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full text-xs">
           {t.sdgBadge}
         </div>
       </div>
@@ -265,7 +365,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Global Controls: Language, Organization, Role */}
+        {/* Global Controls: Language, Organization, Demo Role Selector */}
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           {/* Language Switch */}
           <div className="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-100 text-xs font-medium">
@@ -290,6 +390,7 @@ export default function App() {
               setCurrentOrgId(e.target.value);
               setLoading(true);
             }}
+            aria-label="Select Organization"
             className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 shadow-sm focus:border-emerald-500"
           >
             {orgs.map(o => (
@@ -297,8 +398,8 @@ export default function App() {
             ))}
           </select>
 
-          {/* Role Switcher */}
-          <div className="inline-flex rounded-lg border border-slate-300 p-1 bg-white text-xs font-bold">
+          {/* Demo Role Switcher (Explicitly labeled as simulation tool) */}
+          <div className="inline-flex rounded-lg border border-slate-300 p-1 bg-white text-xs font-bold" title="Demonstration role selector (non-authenticating)">
             <button
               onClick={() => setRole('worker')}
               className={`px-3 py-1.5 rounded-md transition ${role === 'worker' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
@@ -315,11 +416,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-sm border border-slate-700 animate-bounce">
-          <span className="text-emerald-400">✔</span>
-          <span>{toastMessage}</span>
+      {/* Toast Notification (Differentiating Success vs Error) */}
+      {toast && (
+        <div
+          role="alert"
+          className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-sm border ${
+            toast.type === 'error'
+              ? 'bg-rose-950 text-white border-rose-700'
+              : 'bg-slate-900 text-white border-slate-700'
+          }`}
+        >
+          <span>{toast.type === 'error' ? '❌' : '✔'}</span>
+          <span>{toast.message}</span>
         </div>
       )}
 
@@ -343,6 +451,7 @@ export default function App() {
               <select
                 value={currentWorkerId}
                 onChange={(e) => setCurrentWorkerId(e.target.value)}
+                aria-label="Select active worker"
                 className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-medium w-full sm:w-auto"
               >
                 {workers.map(w => (
@@ -485,7 +594,7 @@ export default function App() {
                     required
                     value={reportTitle}
                     onChange={(e) => setReportTitle(e.target.value)}
-                    placeholder="e.g. Broken ladder hinge on 2nd floor"
+                    placeholder="e.g. Missing guardrails on Sector 4 staging"
                     className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:border-emerald-500"
                   />
                 </div>
@@ -529,7 +638,7 @@ export default function App() {
                     required
                     value={reportDescription}
                     onChange={(e) => setReportDescription(e.target.value)}
-                    placeholder="Provide specific details, exact location, and hazards present..."
+                    placeholder="Describe specific details, location, and risks..."
                     className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:border-emerald-500"
                   />
                 </div>

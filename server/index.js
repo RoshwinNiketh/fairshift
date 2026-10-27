@@ -15,35 +15,55 @@ app.use(cors());
 app.use(express.json());
 
 // In-memory application store initialized with seeded synthetic records
+// DEMO NOTICE: All records are synthetic; no real personally identifiable information or authentication.
 let db = JSON.parse(JSON.stringify(INITIAL_DATA));
 
-// Helper to find organization
-const getOrg = (orgId) => db.organizations.find(o => o.id === orgId) || db.organizations[0];
+// Valid enum sets for payload validation
+const VALID_CATEGORIES = new Set([
+  'SAFETY_HAZARD',
+  'EQUIPMENT_ISSUE',
+  'EXCESSIVE_FATIGUE',
+  'CHEMICAL_EXPOSURE',
+  'PAY_DISCREPANCY',
+  'WORKPLACE_HARASSMENT'
+]);
 
-// API: Health / Ping
+const VALID_SEVERITIES = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+const VALID_STATUSES = new Set(['OPEN', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']);
+
+// Helper to find organization
+const getOrg = (orgId) => db.organizations.find(o => o.id === orgId);
+
+// API: Health / Ping with explicit architecture & disclaimer headers
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: '1.1.0',
     sdgGoal: 'SDG 8: Decent Work and Economic Growth',
-    storageMode: 'in-memory-synthetic-store'
+    storageMode: 'in-memory-synthetic-store',
+    demoNotice: 'Demonstration environment only. Synthetic data without persistent PII.'
   });
 });
 
-// API: Get initial or current state for an organization
+// API: List organizations
 app.get('/api/orgs', (req, res) => {
   res.json(db.organizations);
 });
 
+// API: Get organization data (scoped strictly to organization)
 app.get('/api/org/:orgId/data', (req, res) => {
   const { orgId } = req.params;
   const org = getOrg(orgId);
+  if (!org) {
+    return res.status(404).json({ error: `Organization '${orgId}' not found.` });
+  }
+
   const workers = db.workers.filter(w => w.orgId === org.id);
   const shifts = db.shifts.filter(s => s.orgId === org.id);
   const reports = db.reports.filter(r => r.orgId === org.id);
 
-  // Compute fatigue alerts for each worker
+  // Compute fatigue alerts for workers in this organization
   const fatigueAlerts = [];
   workers.forEach(w => {
     const workerShifts = shifts.filter(s => s.workerId === w.id);
@@ -76,11 +96,29 @@ app.get('/api/org/:orgId/data', (req, res) => {
 // API: Worker Check In
 app.post('/api/shifts/check-in', (req, res) => {
   const { workerId, orgId } = req.body;
-  const worker = db.workers.find(w => w.id === workerId);
-  if (!worker) return res.status(404).json({ error: 'Worker not found' });
-  if (worker.activeShiftId) return res.status(400).json({ error: 'Worker already has an active shift' });
+  if (!workerId || !orgId) {
+    return res.status(400).json({ error: 'Both workerId and orgId are required.' });
+  }
 
-  const org = getOrg(orgId || worker.orgId);
+  const org = getOrg(orgId);
+  if (!org) {
+    return res.status(404).json({ error: 'Organization not found.' });
+  }
+
+  const worker = db.workers.find(w => w.id === workerId);
+  if (!worker) {
+    return res.status(404).json({ error: 'Worker not found.' });
+  }
+
+  // Cross-org boundary validation
+  if (worker.orgId !== org.id) {
+    return res.status(400).json({ error: 'Worker does not belong to specified organization.' });
+  }
+
+  if (worker.activeShiftId) {
+    return res.status(400).json({ error: 'Worker already has an active shift.' });
+  }
+
   const newShift = {
     id: `sh-${Date.now()}`,
     orgId: org.id,
@@ -108,18 +146,26 @@ app.post('/api/shifts/check-in', (req, res) => {
 // API: Worker Check Out
 app.post('/api/shifts/check-out', (req, res) => {
   const { workerId, notes } = req.body;
+  if (!workerId) {
+    return res.status(400).json({ error: 'workerId is required.' });
+  }
+
   const worker = db.workers.find(w => w.id === workerId);
   if (!worker || !worker.activeShiftId) {
-    return res.status(400).json({ error: 'No active shift found for this worker' });
+    return res.status(400).json({ error: 'No active shift found for this worker.' });
   }
 
   const shift = db.shifts.find(s => s.id === worker.activeShiftId);
   if (!shift) {
     worker.activeShiftId = null;
-    return res.status(404).json({ error: 'Shift record not found' });
+    return res.status(404).json({ error: 'Active shift record not found.' });
   }
 
   const org = getOrg(shift.orgId);
+  if (!org) {
+    return res.status(500).json({ error: 'Associated organization record missing.' });
+  }
+
   shift.endTime = new Date().toISOString();
   shift.hours = calculateDurationHours(shift.startTime, shift.endTime);
 
@@ -135,7 +181,9 @@ app.post('/api/shifts/check-out', (req, res) => {
   shift.regularPay = earnings.regularPay;
   shift.overtimePay = earnings.overtimePay;
   shift.totalEstimatedEarnings = earnings.totalEstimatedEarnings;
-  if (notes) shift.notes = notes;
+  if (notes && typeof notes === 'string') {
+    shift.notes = notes.trim().slice(0, 500);
+  }
 
   worker.activeShiftId = null;
 
@@ -145,22 +193,45 @@ app.post('/api/shifts/check-out', (req, res) => {
 // API: Submit Safety Concern / Grievance
 app.post('/api/reports', (req, res) => {
   const { workerId, orgId, category, severity, title, description } = req.body;
-  if (!workerId || !title || !description) {
-    return res.status(400).json({ error: 'Worker ID, title, and description are required' });
+  if (!workerId || !orgId || !title || !description) {
+    return res.status(400).json({ error: 'workerId, orgId, title, and description are required.' });
+  }
+
+  const org = getOrg(orgId);
+  if (!org) {
+    return res.status(404).json({ error: 'Organization not found.' });
   }
 
   const worker = db.workers.find(w => w.id === workerId);
-  const org = getOrg(orgId || (worker ? worker.orgId : 'org-buildright'));
+  if (!worker) {
+    return res.status(404).json({ error: 'Worker not found.' });
+  }
+
+  // Cross-org validation
+  if (worker.orgId !== org.id) {
+    return res.status(400).json({ error: 'Worker does not belong to the specified organization.' });
+  }
+
+  // Enum validation
+  const finalCategory = VALID_CATEGORIES.has(category) ? category : 'SAFETY_HAZARD';
+  const finalSeverity = VALID_SEVERITIES.has(severity) ? severity : 'MEDIUM';
+
+  const cleanTitle = String(title).trim().slice(0, 150);
+  const cleanDescription = String(description).trim().slice(0, 2000);
+
+  if (!cleanTitle || !cleanDescription) {
+    return res.status(400).json({ error: 'Valid title and description cannot be empty strings.' });
+  }
 
   const newReport = {
     id: `rep-${Date.now()}`,
     orgId: org.id,
-    workerId: worker ? worker.id : workerId,
-    workerName: worker ? worker.name : 'Registered Employee',
-    category: category || 'SAFETY_HAZARD',
-    severity: severity || 'MEDIUM',
-    title: title.trim(),
-    description: description.trim(),
+    workerId: worker.id,
+    workerName: worker.name,
+    category: finalCategory,
+    severity: finalSeverity,
+    title: cleanTitle,
+    description: cleanDescription,
     status: 'OPEN',
     submittedAt: new Date().toISOString(),
     resolutionNote: ''
@@ -176,29 +247,51 @@ app.patch('/api/reports/:reportId', (req, res) => {
   const { status, resolutionNote } = req.body;
 
   const report = db.reports.find(r => r.id === reportId);
-  if (!report) return res.status(404).json({ error: 'Report not found' });
+  if (!report) {
+    return res.status(404).json({ error: `Report '${reportId}' not found.` });
+  }
 
-  if (status) report.status = status;
-  if (resolutionNote !== undefined) report.resolutionNote = resolutionNote;
-  if (status === 'RESOLVED') report.resolvedAt = new Date().toISOString();
+  if (status) {
+    if (!VALID_STATUSES.has(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` });
+    }
+    report.status = status;
+    if (status === 'RESOLVED') {
+      report.resolvedAt = new Date().toISOString();
+    }
+  }
+
+  if (resolutionNote !== undefined) {
+    report.resolutionNote = String(resolutionNote).trim().slice(0, 1000);
+  }
 
   res.json(report);
 });
 
-// API: Update Organization Configuration
+// API: Update Organization Configuration (Restricted to safe threshold fields)
 app.patch('/api/org/:orgId/settings', (req, res) => {
   const { orgId } = req.params;
-  const org = db.organizations.find(o => o.id === orgId);
-  if (!org) return res.status(404).json({ error: 'Organization not found' });
+  const org = getOrg(orgId);
+  if (!org) {
+    return res.status(404).json({ error: 'Organization not found.' });
+  }
 
-  org.settings = { ...org.settings, ...req.body };
+  const allowedKeys = [
+    'standardDailyHours',
+    'overtimeMultiplier',
+    'defaultHourlyRate',
+    'maxDailyHoursThreshold',
+    'minRestHoursThreshold',
+    'maxWeeklyHoursThreshold'
+  ];
+
+  for (const key of allowedKeys) {
+    if (typeof req.body[key] === 'number' && req.body[key] > 0) {
+      org.settings[key] = req.body[key];
+    }
+  }
+
   res.json(org);
-});
-
-// API: Reset to Seed Data
-app.post('/api/reset-data', (req, res) => {
-  db = JSON.parse(JSON.stringify(INITIAL_DATA));
-  res.json({ message: 'Synthetic data reset successfully' });
 });
 
 // Serve frontend in production
@@ -211,5 +304,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`FairShift server running on port ${PORT} (0.0.0.0)`);
+  console.log(`FairShift production server listening on 0.0.0.0:${PORT}`);
 });

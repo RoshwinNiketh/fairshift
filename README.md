@@ -3,8 +3,9 @@
 > Transparent Shifts, Fair Pay & Worker Safety for Construction and Campus Support Services.
 > Built for Hackathon SDG 8 (Decent Work and Economic Growth).
 
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#automated-testing)
+[![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen)](#automated-testing)
 [![SDG](https://img.shields.io/badge/SDG-8%20Decent%20Work-blue)](#mission)
+[![Architecture](https://img.shields.io/badge/Docker-Linux%20Alpine%20Ready-blue)](#cloud-run--docker-deployment)
 
 ---
 
@@ -19,12 +20,15 @@ Frontline workers frequently experience:
 
 FairShift delivers an accessible, mobile-first progressive application with full English and Tamil localization, deterministic shift pay breakdown, rule-based fatigue alerts, and supervisor-accountable safety tracking.
 
+> **Demonstration & Synthetic Data Notice**:
+> FairShift is configured with self-contained synthetic demonstration scenarios. It does not store or process real personally identifiable information (PII). Role switching between Worker and Employer is provided for demonstration and judging review purposes only and does not imply production access-control or authentication.
+
 ---
 
 ## Key Modules & Features
 
 ### 1. Shift & Pay Transparency
-- **One-Touch Check In / Check Out**: Designed for mobile ergonomics with oversized touch targets.
+- **One-Touch Check In / Check Out**: Designed for mobile ergonomics with oversized touch targets and zoom-enabled viewports.
 - **Live Elapsed Duty & Real-Time Estimated Pay**: Displays real-time earnings and highlights whether overtime has begun.
 - **Itemized Earnings Breakdown**: Automatically decomposes recorded shifts into regular hours, overtime hours, base rate, and overtime multiplier earnings.
 - **Clear Legal Disclaimer**: Explicitly states that estimates provide transparency and accountability rather than tax/payroll compliance.
@@ -51,34 +55,41 @@ Includes two distinct synthetic scenarios:
 
 - **Bilingual Interface**: Full, native English and Tamil (`தமிழ்`) translations for all essential worker interactions, categories, and buttons (zero placeholder text).
 - **Device Independence**: Fully operational without camera, microphone, or GPS permissions.
-- **Accessibility**: Semantic HTML5 elements, high-contrast badges, keyboard focus rings, and touch-optimized sizing.
+- **Accessibility**: Semantic HTML5 elements, high-contrast badges, keyboard focus rings, and touch-optimized sizing with unrestricted viewport scaling.
 
 ---
 
 ## Technical Stack & Architecture
 
-- **Frontend**: React 18, Vite, Tailwind CSS (Design system guided by `ui-ux-pro-max`).
+- **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build (`@tailwindcss/vite` without development CDNs).
 - **Backend**: Node.js & Express REST API (`0.0.0.0` with `PORT` environment variable support).
 - **Calculation Core**: Pure deterministic ES modules with comprehensive test suite (`node:test`).
-- **Containerization**: Multi-stage Dockerfile optimized for Google Cloud Run deployment.
+- **Containerization**: Clean cross-platform multi-stage Dockerfile (`node:20-alpine`) free of platform-specific binaries.
 - **Data Persistence**: In-memory synthetic datastore with persistent client fallback for high-reliability demo presentations.
 
 ---
 
 ## Automated Testing
 
-Run the deterministic calculation and fatigue test suite:
+Run the deterministic calculation, fatigue, and end-to-end API lifecycle test suite:
 
 ```bash
 npm test
 ```
 
-### Verified Test Suite
+### Verified Test Suite (16 Automated Tests Passing)
 - `calculateDurationHours`: Verified accurate decimal hour calculation and inverted timestamp rejection.
 - `calculateShiftEarnings`: Verified exact regular pay calculations.
 - `calculateShiftEarnings`: Verified overtime math with custom multipliers.
 - `evaluateFatigueRisk`: Verified daily duty limit threshold warnings.
 - `evaluateFatigueRisk`: Verified critical alerts for insufficient rest periods between shifts.
+- `Seed data isolation`: Verified strict separation between construction and college organization datasets.
+- `GET /api/health`: Verified healthcheck response and synthetic data disclosure.
+- `GET /api/org/:orgId/data`: Scoped retrieval verifying data isolation.
+- `POST /api/shifts/check-in`: Validated organization membership and rejected cross-org worker injection.
+- `POST /api/reports`: Validated issue categories, severity enums, and required fields.
+- `PATCH /api/reports/:id`: Verified status transitions (`OPEN` -> `RESOLVED`) and supervisor resolution notes.
+- `POST /api/shifts/check-out`: Full check-in to check-out calculation lifecycle.
 
 ---
 
@@ -108,13 +119,32 @@ npm test
 
 ---
 
-## Cloud Run & Container Deployment
+## Google Cloud Run Deployment
 
-FairShift packages both client and server into a single container image:
+FairShift is packaged as a standard container listening on `0.0.0.0:${PORT}`:
 
+### Option A: Direct Google Cloud Run Deployment (Source-based)
 ```bash
-docker build -t fairshift .
-docker run -p 8080:8080 fairshift
+gcloud run deploy fairshift \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080
+```
+
+### Option B: Cloud Build & Container Registry
+```bash
+# 1. Build and push image to Google Artifact Registry
+gcloud builds submit --tag gcr.io/[PROJECT_ID]/fairshift:latest
+
+# 2. Deploy to Cloud Run
+gcloud run deploy fairshift \
+  --image gcr.io/[PROJECT_ID]/fairshift:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080
 ```
 
 ---
