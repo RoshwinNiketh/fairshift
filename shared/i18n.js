@@ -6,12 +6,15 @@ export const translations = {
     disclaimer: "Estimates are for transparency and verification purposes only. This tool does not constitute official legal payroll compliance or binding tax documentation.",
     syntheticDataNote: "Demonstration Mode: Synthetic Data Active",
     
-    // Role selection
+    // Role selection & Demo controls
     switchRole: "Switch View",
     workerRole: "Worker View",
     employerRole: "Employer Operations",
     activeOrg: "Organization",
     selectWorker: "Select Active Worker",
+    resetDemoData: "Reset Demo Data",
+    demoResetSuccess: "Demo data has been reset to pristine initial state.",
+    storageModeBadge: "Browser-Local Persistence",
 
     // Worker View
     activeShift: "Active Shift",
@@ -55,7 +58,7 @@ export const translations = {
     statusResolved: "Resolved",
     statusDismissed: "Dismissed",
     resolutionNotes: "Supervisor Resolution Notes",
-    confidentialNotice: "Notice: Reports are confidential and account-linked for supervisor accountability. Anonymous reports without worker identity are not supported.",
+    confidentialNotice: "Notice: Reports are account-linked and visible to supervisors to ensure documented resolution. Full anonymity is not supported.",
 
     // Severities
     severityLow: "Low",
@@ -108,12 +111,15 @@ export const translations = {
     disclaimer: "மதிப்பீடுகள் வெளிப்படைத்தன்மை மற்றும் சரிபார்ப்பு நோக்கங்களுக்காக மட்டுமே. இது சட்டப்பூர்வ சம்பளப் பட்டியல் அல்ல.",
     syntheticDataNote: "டெமோ முறை: மாதிரி தரவு இயக்கத்தில் உள்ளது",
     
-    // Role selection
+    // Role selection & Demo controls
     switchRole: "பார்வை மாற்றம்",
     workerRole: "தொழிலாளர் பக்கம்",
     employerRole: "நிர்வாகக் குழு பக்கம்",
     activeOrg: "நிறுவனம்",
     selectWorker: "தொழிலாளரைத் தேர்வுசெய்க",
+    resetDemoData: "மாதிரி தரவை மீட்டமை",
+    demoResetSuccess: "மாதிரி தரவு ஆரம்ப நிலைக்கு மீட்டமைக்கப்பட்டது.",
+    storageModeBadge: "உலாவி-உள்ளமைவு தரவுத்தளம்",
 
     // Worker View
     activeShift: "தற்போதைய பணி நேரம் (ஷிஃப்ட்)",
@@ -157,7 +163,7 @@ export const translations = {
     statusResolved: "சரிசெய்யப்பட்டது",
     statusDismissed: "நிராகரிக்கப்பட்டது",
     resolutionNotes: "மேற்பார்வையாளர் தீர்வு குறிப்புகள்",
-    confidentialNotice: "அறிவிப்பு: புகார்கள் ரகசியமானவை மற்றும் தொழிலாளர் கணக்குடன் இணைக்கப்பட்டவை. பெயரில்லாத புகார்கள் ஏற்கப்படாது.",
+    confidentialNotice: "அறிவிப்பு: புகார்கள் தொழிலாளர் கணக்குடன் இணைக்கப்பட்டு மேற்பார்வையாளருக்குத் தெரியும். பெயர் குறிப்பிடாத புகார்கள் ஏற்கப்படாது.",
 
     // Severities
     severityLow: "குறைவு",

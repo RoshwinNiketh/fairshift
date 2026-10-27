@@ -1,12 +1,6 @@
 /**
  * FairShift - Core Calculation Engine & Types
  * SDG 8: Decent Work and Economic Growth
- * 
- * Rules:
- * - Deterministic calculations
- * - Overtime calculated beyond standard daily hours (default: 8h)
- * - Fatigue warnings based on shift length, rest periods, and rolling hours
- * - Explicitly non-payroll compliant disclaimer
  */
 
 export const DISCLAIMER_TEXT = "Estimates are for transparency and verification purposes only. This tool does not constitute official legal payroll compliance or binding tax documentation.";
@@ -63,12 +57,13 @@ export function calculateShiftEarnings(totalHours, hourlyRate, standardHours = 8
 /**
  * Evaluates fatigue and excessive hours risk
  * @param {Array<{startTime: string, endTime: string, hours?: number}>} workerShifts 
- * @param {object} config { maxDailyHours: 10, minRestHours: 11, maxWeeklyHours: 48 }
+ * @param {object} config { maxDailyHours: 10, minRestHours: 11, maxWeeklyHours: 48, lang: 'en'|'ta' }
  */
 export function evaluateFatigueRisk(workerShifts = [], config = {}) {
   const maxDailyHours = config.maxDailyHours || 10;
   const minRestHours = config.minRestHours || 11;
   const maxWeeklyHours = config.maxWeeklyHours || 48;
+  const isTamil = config.lang === 'ta';
 
   const warnings = [];
   let totalHoursLast7Days = 0;
@@ -94,7 +89,9 @@ export function evaluateFatigueRisk(workerShifts = [], config = {}) {
       warnings.push({
         type: 'EXCESSIVE_DAILY_HOURS',
         severity: 'HIGH',
-        message: `Shift exceeded maximum recommended daily limit (${duration}h worked vs ${maxDailyHours}h threshold).`,
+        message: isTamil
+          ? `ஷிஃப்ட் அதிகபட்ச பரிந்துரைக்கப்பட்ட தினசரி வரம்பை தாண்டியது (${duration} மணிநேரம் வேலை vs ${maxDailyHours} மணிநேர வரம்பு).`
+          : `Shift exceeded maximum recommended daily limit (${duration}h worked vs ${maxDailyHours}h threshold).`,
         shiftId: shift.id,
         date: shift.startTime
       });
@@ -110,7 +107,9 @@ export function evaluateFatigueRisk(workerShifts = [], config = {}) {
         warnings.push({
           type: 'INSUFFICIENT_REST',
           severity: 'CRITICAL',
-          message: `Insufficient rest period between shifts: only ${restPeriod.toFixed(1)}h rest (minimum required: ${minRestHours}h).`,
+          message: isTamil
+            ? `ஷிஃப்ட்டுகளுக்கு இடையே போதிய ஓய்வு இடைவெளி இல்லை: வெறும் ${restPeriod.toFixed(1)} மணிநேர ஓய்வு மட்டுமே (தேவைப்படும் குறைந்தபட்சம்: ${minRestHours} மணிநேரம்).`
+            : `Insufficient rest period between shifts: only ${restPeriod.toFixed(1)}h rest (minimum required: ${minRestHours}h).`,
           priorShiftId: shift.id,
           nextShiftId: nextShift.id,
           date: nextShift.startTime
@@ -124,7 +123,9 @@ export function evaluateFatigueRisk(workerShifts = [], config = {}) {
     warnings.push({
       type: 'EXCESSIVE_WEEKLY_HOURS',
       severity: 'HIGH',
-      message: `Total recorded hours in the past 7 days (${totalHoursLast7Days.toFixed(1)}h) exceeds health threshold of ${maxWeeklyHours}h.`,
+      message: isTamil
+        ? `கடந்த 7 நாட்களில் பதிவுசெய்யப்பட்ட மொத்த பணி நேரம் (${totalHoursLast7Days.toFixed(1)} மணிநேரம்) ஆரோக்கிய வரம்பான ${maxWeeklyHours} மணிநேரத்தை தாண்டியுள்ளது.`
+        : `Total recorded hours in the past 7 days (${totalHoursLast7Days.toFixed(1)}h) exceeds health threshold of ${maxWeeklyHours}h.`,
       rollingHours: totalHoursLast7Days
     });
   }

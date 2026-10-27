@@ -3,9 +3,10 @@
 > Transparent Shifts, Fair Pay & Worker Safety for Frontline Construction and College Support Services.
 > Built for Hackathon SDG 8 (Decent Work and Economic Growth).
 
-[![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)](#automated-testing)
+[![Tests](https://img.shields.io/badge/tests-32%20passing-brightgreen)](#automated-testing)
 [![SDG](https://img.shields.io/badge/SDG-8%20Decent%20Work-blue)](#1-chosen-challenge-vertical--sdg-8-problem-statement)
 [![Architecture](https://img.shields.io/badge/Assistant-Context--Aware%20Deterministic-indigo)](#5-fairshift-context-aware-smart-assistant)
+[![Persistence](https://img.shields.io/badge/Storage-Versioned%20Local%20Demo-emerald)](#6-architecture--technology-stack)
 
 ---
 
@@ -66,6 +67,7 @@ To meet the evaluation criteria for a smart, dynamic assistant without introduci
 
 ### How It Works:
 - **Zero Hallucination / Grounded Execution**: The assistant does not invent numbers or claim legal authority. It queries the actual state of the application: active worker, organization settings, completed shifts, fatigue alerts, and submitted grievance records.
+- **Context Isolation (P0 Fix)**: History is keyed by `role_lang_orgId_workerId`. When the user switches worker, organization, role, or language, previous conversations are isolated so messages from one context are never presented as answers for another.
 - **Role & Persona Sensitivity**:
   - **Worker View**: Focuses on individual net earnings, itemized overtime math, personal fatigue evaluation, safety report statuses, and guidance on reporting hazards.
   - **Employer View**: Focuses on organization-wide fatigue alerts, unresolved critical safety hazards, aggregate labor costs, and rule threshold reviews.
@@ -82,26 +84,27 @@ flowchart TD
         UI[Dual Interface: Worker / Employer]
         AST[Context-Aware Smart Assistant]
         CALC_FE[Deterministic Calculations & State Engine]
+        STORE[Versioned Local Demo Store - v1]
         I18N[Tamil / English Localization]
     end
 
     subgraph Backend["API Layer (Node.js 20 + Express)"]
         REST[REST API: 0.0.0.0:8080]
         VAL[Schema & Enum Validation Layer]
-        STORE[(In-Memory Synthetic Data Store)]
+        SERVER_STORE[(In-Memory Synthetic Data Store)]
     end
 
     UI --> CALC_FE
     AST --> CALC_FE
-    UI --> REST
-    AST --> REST
-    REST --> VAL --> STORE
+    UI --> STORE
+    AST --> STORE
+    REST --> VAL --> SERVER_STORE
 ```
 
 - **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build (clean native CSS compilation via `@tailwindcss/vite`, no development CDNs).
+- **Demo Data Layer (`shared/storage.js`)**: Reliable, versioned browser-local storage with recovery safeguards against corrupted JSON, maintaining shift check-ins, check-outs, and grievance resolution across page reloads. Includes an explicit **Reset Demo Data** control.
 - **Backend**: Lightweight Node.js/Express REST server listening on `0.0.0.0` and dynamic `PORT`.
-- **Validation**: Strict server-side payload validation for organization boundaries, enums (`VALID_CATEGORIES`, `VALID_SEVERITIES`, `VALID_STATUSES`), and non-empty sanitized strings.
-- **Containerization**: Multi-stage Dockerfile (`node:20-alpine`) ready for Google Cloud Run deployment.
+- **Containerization**: Multi-stage Dockerfile (`node:20-alpine`) ready for Google Cloud Run deployment when cloud credentials are provisioned.
 
 ---
 
@@ -111,21 +114,21 @@ flowchart TD
 2. **Shift History & Pay Breakdown**: Itemizes regular hours, overtime hours, base hourly pay, overtime rate, and total estimated earnings with Indian Rupee (₹) currency formatting.
 3. **Safety & Grievance Reporting**: Category and severity selection (Low to Critical Risk), confidential account-linked tracking, and real-time status progression.
 4. **Employer Operations Dashboard**: Aggregated metrics on active workforce, duty hours, overtime ratios, and pending safety concerns.
-5. **Rule-Based Fatigue Monitor**: Alerts supervisors with specific reasons (excessive daily shift or short recovery rest gap) and calculates 7-day rolling totals.
+5. **Rule-Based Fatigue Monitor**: Alerts supervisors with specific reasons in English or Tamil (excessive daily shift or short recovery rest gap) and calculates 7-day rolling totals.
 6. **Bilingual Toggle**: Seamless switching between English and native Tamil (`தமிழ்`) with zero placeholder text.
 
 ---
 
 ## 8. Automated Testing & Verification
 
-Run the comprehensive test suite (23 automated tests passing):
+Run the comprehensive test suite (32 automated tests passing):
 
 ```bash
 npm test
 ```
 
 ### Verified Test Breakdown:
-- **Assistant Tests (`test/assistant.test.js`)**:
+- **Assistant Tests (`test/assistant.test.js` & `test/assistant_isolation.test.js`)**:
   - Dynamic earnings calculations matching selected worker.
   - Fatigue warning identification for fatigued workers.
   - Native Tamil assistant responses.
@@ -133,6 +136,16 @@ npm test
   - Real-time assistant response updates when report status changes.
   - Cross-industry threshold differentiation (Construction vs College).
   - Non-hallucinatory fallback handling for out-of-scope queries.
+  - Clean conversation isolation between different workers.
+  - Role-appropriate intent isolation between worker and employer.
+  - Bilingual intent accuracy.
+- **Storage & State Tests (`test/storage.test.js`)**:
+  - Versioned initialization with schema tagging (`_version: 1`).
+  - Corrupted JSON recovery falling back safely to verified seed fixtures.
+  - Version mismatch auto-migration.
+  - End-to-end check-in and check-out state persistence and earnings recalculation.
+  - Safety report submission and supervisor status resolution persistence.
+  - One-click demo data reset restoring pristine dataset.
 - **Calculations Tests (`test/calculations.test.js`)**:
   - `calculateDurationHours`: Verified decimal hours and inverted timestamp rejection.
   - `calculateShiftEarnings`: Verified regular and overtime pay calculations.
@@ -171,10 +184,12 @@ npm test
 
 ---
 
-## 10. Accessibility & Inclusivity
+## 10. Accessibility & Inclusivity (UI/UX Pro Max Audited)
 
-- **Viewport Scalability**: Supports pinch-to-zoom (`user-scalable=yes`) for mobile accessibility.
-- **Large Touch Targets**: Minimum 48px interactive touch targets for workers with gloves or small screens.
+- **Semantic HTML**: Semantic elements (`<main>`, `<section>`, `<header>`, `<footer>`, `<dialog>`) with appropriate ARIA roles (`role="alert"`, `aria-expanded`, `aria-controls`, `aria-label`).
+- **Touch Target Ergonomics**: Primary action buttons exceed the minimum 48px/44px threshold (Check In/Out: 56px; submit buttons: 46px; selectors: 38px) with 8px+ spacing.
+- **Accessible Form Controls**: All form inputs and dropdowns use explicit matching `htmlFor` and `id` attributes.
+- **Viewport Scalability**: Full pinch-to-zoom allowed (`user-scalable=yes`) for workers on mobile devices.
 - **High-Contrast Focus Indicators**: Visible keyboard focus states (`outline: 2px solid #22c55e`).
 - **Device Independence**: Fully functional without requiring camera, GPS, or microphone hardware permissions.
 
@@ -183,16 +198,16 @@ npm test
 ## 11. Assumptions, Limitations & Disclaimers
 
 1. **Synthetic Data Disclosure**: All organizations, worker names, phone numbers, and logged incidents are fictional synthetic fixtures created exclusively for hackathon evaluation.
-2. **In-Memory Store**: State modifications persist in memory for the duration of the server process. When the server is offline, the client continues functioning via local state simulation.
-3. **Non-Payroll Compliance Disclaimer**: FairShift provides estimated calculations for workplace transparency and personal verification. It does not constitute official legal payroll compliance, binding tax calculations, or statutory wage Slips.
-4. **Confidential vs Anonymous Reporting**: Reports are confidential and account-linked so supervisors can be held accountable for resolving them; true anonymous reporting without worker identity is intentionally not claimed.
+2. **Browser-Local Persistence**: Interactive modifications are saved in the browser's localStorage (`fairshift_demo_state_v1`). Users can reset state at any time using the "Reset Demo Data" button.
+3. **Non-Payroll Compliance Disclaimer**: FairShift provides estimated calculations for workplace transparency and personal verification. It does not constitute official legal payroll compliance, binding tax calculations, or statutory wage slips.
+4. **Account-Linked vs Anonymous Reporting**: Reports are account-linked so supervisors can be held accountable for resolving them; true anonymous reporting without worker identity is intentionally not claimed.
 5. **Demonstration Role Selector**: The UI role selector is provided for judging convenience and does not enforce cryptographic multi-tenant RBAC.
 
 ---
 
 ## 12. Future Scalability (Roadmap)
 
-- **Cloud Datastore / Firestore Integration**: Seamless handoff from the in-memory repository to Google Cloud Firestore when cloud credentials are fully provisioned.
+- **Cloud Datastore / Firestore Integration**: Seamless handoff from local storage to Google Cloud Firestore when cloud credentials are fully provisioned.
 - **Offline PWA & Service Workers**: Background sync for shift check-ins and hazard reports in remote construction basements with intermittent cellular connectivity.
 - **Voice Assistant Integration**: Web Speech API for voice-driven prompt interaction in Tamil and other regional languages.
 - **Digital Grievance Whistleblower Protocol**: Zero-knowledge proof (ZKP) grievance verification for escalated external regulatory reviews.

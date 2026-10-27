@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { translations } from '../shared/i18n.js';
-import { calculateShiftEarnings, calculateDurationHours, evaluateFatigueRisk } from '../shared/calculations.js';
-import { INITIAL_DATA } from '../shared/seedData.js';
+import { calculateShiftEarnings, calculateDurationHours } from '../shared/calculations.js';
+import {
+  getStoredState,
+  resetStoredState,
+  getLocalOrgData,
+  localCheckIn,
+  localCheckOut,
+  localSubmitReport,
+  localUpdateReportStatus
+} from '../shared/storage.js';
 import AssistantWidget from './components/AssistantWidget.jsx';
 
 export default function App() {
   const [lang, setLang] = useState('en');
   const t = translations[lang] || translations.en;
 
-  // Global State
-  const [orgs, setOrgs] = useState(INITIAL_DATA.organizations);
+  // Global State (Managed through verified versioned local demo storage)
   const [currentOrgId, setCurrentOrgId] = useState('org-buildright');
   const [role, setRole] = useState('worker'); // 'worker' or 'employer' (Demonstration switch only)
   
-  const [workers, setWorkers] = useState([]);
-  const [currentWorkerId, setCurrentWorkerId] = useState('');
-  const [shifts, setShifts] = useState([]);
-  const [reports, setReports] = useState([]);
-  const [fatigueAlerts, setFatigueAlerts] = useState([]);
-  
-  const [loading, setLoading] = useState(true);
+  const [orgData, setOrgData] = useState(() => getLocalOrgData('org-buildright'));
+  const [currentWorkerId, setCurrentWorkerId] = useState('w-c1');
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
@@ -42,80 +44,24 @@ export default function App() {
     setTimeout(() => setToast(null), 4500);
   };
 
-  // Recompute fatigue alerts from current client state
-  const recomputeAlerts = (wList, sList, org) => {
-    const alerts = [];
-    wList.forEach(w => {
-      const wShifts = sList.filter(s => s.workerId === w.id);
-      const risk = evaluateFatigueRisk(wShifts, {
-        maxDailyHours: org.settings.maxDailyHoursThreshold,
-        minRestHours: org.settings.minRestHoursThreshold,
-        maxWeeklyHours: org.settings.maxWeeklyHoursThreshold
-      });
-      if (risk.hasWarning) {
-        alerts.push({
-          workerId: w.id,
-          workerName: w.name,
-          role: w.role,
-          riskLevel: risk.riskLevel,
-          warnings: risk.warnings,
-          totalHoursLast7Days: risk.totalHoursLast7Days
-        });
-      }
+  // Sync state from storage whenever orgId or language changes
+  const refreshCurrentOrg = (orgId = currentOrgId) => {
+    const data = getLocalOrgData(orgId);
+    setOrgData(data);
+    // P0/P2 Fix: Ensure currentWorkerId belongs to this organization
+    setCurrentWorkerId(prevId => {
+      const stillBelongs = data.workers.some(w => w.id === prevId);
+      return stillBelongs ? prevId : (data.workers[0]?.id || '');
     });
-    return alerts;
-  };
-
-  // Load organization data from API
-  const fetchData = async (orgId) => {
-    try {
-      const res = await fetch(`/api/org/${orgId}/data`);
-      if (res.ok) {
-        const data = await res.json();
-        const newWorkers = data.workers || [];
-        setWorkers(newWorkers);
-        setShifts(data.shifts || []);
-        setReports(data.reports || []);
-        setFatigueAlerts(data.fatigueAlerts || []);
-        
-        // Priority 2 UX Fix: Guard against stale worker selection when switching organizations
-        setCurrentWorkerId(prevId => {
-          const stillValid = newWorkers.some(w => w.id === prevId);
-          return stillValid ? prevId : (newWorkers[0]?.id || '');
-        });
-      } else {
-        const errJson = await res.json().catch(() => ({}));
-        showToast(errJson.error || `Failed to fetch data for organization ${orgId}`, 'error');
-      }
-    } catch (err) {
-      // In offline/static-preview scenario, fallback gracefully to initial seed data
-      const org = orgs.find(o => o.id === orgId) || orgs[0];
-      const orgWorkers = INITIAL_DATA.workers.filter(w => w.orgId === orgId);
-      const orgShifts = INITIAL_DATA.shifts.filter(s => s.orgId === orgId);
-      const orgReports = INITIAL_DATA.reports.filter(r => r.orgId === orgId);
-      setWorkers(orgWorkers);
-      setShifts(orgShifts);
-      setReports(orgReports);
-      setFatigueAlerts(recomputeAlerts(orgWorkers, orgShifts, org));
-      
-      setCurrentWorkerId(prevId => {
-        const stillValid = orgWorkers.some(w => w.id === prevId);
-        return stillValid ? prevId : (orgWorkers[0]?.id || '');
-      });
-      showToast('Operating in local-storage demo mode (server unreachable)', 'error');
-    } finally {
-      setLoading(false);
-    }
   };
 
   useEffect(() => {
-    fetchData(currentOrgId);
-  }, [currentOrgId]);
+    refreshCurrentOrg(currentOrgId);
+  }, [currentOrgId, lang]);
 
-  // Handle active worker switch
+  const { organization: currentOrg, workers, shifts, reports, fatigueAlerts } = orgData;
   const currentWorker = workers.find(w => w.id === currentWorkerId) || workers[0];
   const activeShift = shifts.find(s => s.id === (currentWorker?.activeShiftId) || (s.workerId === currentWorker?.id && !s.endTime));
-  const currentOrg = orgs.find(o => o.id === currentOrgId) || orgs[0];
   const sym = currentOrg?.symbol || '₹';
 
   // Live elapsed counter
@@ -134,104 +80,43 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activeShift]);
 
-  // Worker Check In Action
-  const handleCheckIn = async () => {
+  // Worker Check In Action (Guaranteed synchronous state persistence)
+  const handleCheckIn = () => {
     if (!currentWorker) return;
     setActionLoading(true);
     try {
-      const res = await fetch('/api/shifts/check-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId: currentWorker.id, orgId: currentOrgId })
-      });
-      if (res.ok) {
-        showToast(lang === 'ta' ? 'பணி வெற்றிகரமாக தொடங்கியது!' : 'Checked in successfully!', 'success');
-        await fetchData(currentOrgId);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to check in on server', 'error');
-      }
-    } catch {
-      // Offline fallback: update local state genuinely and consistently
-      const newShift = {
-        id: `sh-${Date.now()}`,
-        orgId: currentOrgId,
-        workerId: currentWorker.id,
-        workerName: currentWorker.name,
-        startTime: new Date().toISOString(),
-        endTime: null,
-        hours: 0,
-        hourlyRate: currentWorker.hourlyRate,
-        regularHours: 0,
-        overtimeHours: 0,
-        regularPay: 0,
-        overtimePay: 0,
-        totalEstimatedEarnings: 0
-      };
-      setShifts(prev => [newShift, ...prev]);
-      setWorkers(prev => prev.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: newShift.id } : w));
-      showToast('Checked in locally (offline demo fallback)', 'success');
+      localCheckIn(currentWorker.id, currentOrgId);
+      refreshCurrentOrg(currentOrgId);
+      showToast(lang === 'ta' ? 'பணி வெற்றிகரமாக தொடங்கியது!' : 'Checked in successfully!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to check in', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Worker Check Out Action
-  const handleCheckOut = async () => {
+  // Worker Check Out Action (Guaranteed synchronous state persistence & earnings calculation)
+  const handleCheckOut = () => {
     if (!currentWorker) return;
     setActionLoading(true);
     try {
-      const res = await fetch('/api/shifts/check-out', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId: currentWorker.id, notes: 'Completed shift duties' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        showToast(
-          lang === 'ta'
-            ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: ${sym}${data.earnings?.totalEstimatedEarnings}`
-            : `Checked out successfully! Estimated Earnings: ${sym}${data.earnings?.totalEstimatedEarnings}`,
-          'success'
-        );
-        await fetchData(currentOrgId);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Check out failed on server', 'error');
-      }
-    } catch {
-      // Offline fallback: genuine state calculation & persistence
-      if (activeShift) {
-        const endTime = new Date().toISOString();
-        const duration = calculateDurationHours(activeShift.startTime, endTime);
-        const earnings = calculateShiftEarnings(
-          duration,
-          currentWorker.hourlyRate,
-          currentOrg.settings.standardDailyHours,
-          currentOrg.settings.overtimeMultiplier
-        );
-        const updatedShift = {
-          ...activeShift,
-          endTime,
-          hours: duration,
-          ...earnings
-        };
-        const updatedShifts = shifts.map(s => s.id === activeShift.id ? updatedShift : s);
-        setShifts(updatedShifts);
-        const updatedWorkers = workers.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: null } : w);
-        setWorkers(updatedWorkers);
-        setFatigueAlerts(recomputeAlerts(updatedWorkers, updatedShifts, currentOrg));
-        showToast(`Checked out locally. Estimated: ${sym}${earnings.totalEstimatedEarnings}`, 'success');
-      } else {
-        showToast('Check out failed: no active shift found', 'error');
-      }
+      const { earnings } = localCheckOut(currentWorker.id, 'Completed full scheduled duties');
+      refreshCurrentOrg(currentOrgId);
+      showToast(
+        lang === 'ta'
+          ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: ${sym}${earnings.totalEstimatedEarnings}`
+          : `Checked out successfully! Estimated Earnings: ${sym}${earnings.totalEstimatedEarnings}`,
+        'success'
+      );
+    } catch (err) {
+      showToast(err.message || 'Check out failed', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Submit Safety Report
-  const handleSubmitReport = async (e) => {
+  // Submit Safety Report Action
+  const handleSubmitReport = (e) => {
     e.preventDefault();
     if (!reportTitle.trim() || !reportDescription.trim()) {
       showToast('Please provide both an issue title and description.', 'error');
@@ -239,88 +124,45 @@ export default function App() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workerId: currentWorker.id,
-          orgId: currentOrgId,
-          category: reportCategory,
-          severity: reportSeverity,
-          title: reportTitle,
-          description: reportDescription
-        })
-      });
-      if (res.ok) {
-        setReportTitle('');
-        setReportDescription('');
-        showToast(lang === 'ta' ? 'பாதுகாப்பு குறைபாடு பதிவு செய்யப்பட்டது!' : 'Safety concern submitted successfully!', 'success');
-        await fetchData(currentOrgId);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to submit report to server', 'error');
-      }
-    } catch {
-      // Offline fallback: record report genuinely in local state
-      const newRep = {
-        id: `rep-${Date.now()}`,
-        orgId: currentOrgId,
+      localSubmitReport({
         workerId: currentWorker.id,
-        workerName: currentWorker.name,
+        orgId: currentOrgId,
         category: reportCategory,
         severity: reportSeverity,
-        title: reportTitle.trim(),
-        description: reportDescription.trim(),
-        status: 'OPEN',
-        submittedAt: new Date().toISOString(),
-        resolutionNote: ''
-      };
-      setReports(prev => [newRep, ...prev]);
+        title: reportTitle,
+        description: reportDescription
+      });
       setReportTitle('');
       setReportDescription('');
-      showToast('Report recorded in local demo state (offline fallback)', 'success');
+      refreshCurrentOrg(currentOrgId);
+      showToast(lang === 'ta' ? 'பாதுகாப்பு குறைபாடு பதிவு செய்யப்பட்டது!' : 'Safety concern submitted successfully!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to submit report', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Supervisor Status Update
-  const handleUpdateReportStatus = async () => {
+  // Supervisor Status Update Action
+  const handleUpdateReportStatus = () => {
     if (!selectedReportToResolve) return;
     try {
-      const res = await fetch(`/api/reports/${selectedReportToResolve.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: resolutionStatus,
-          resolutionNote: resolutionText
-        })
-      });
-      if (res.ok) {
-        showToast('Report status and resolution note saved.', 'success');
-        setSelectedReportToResolve(null);
-        setResolutionText('');
-        await fetchData(currentOrgId);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to update report status on server', 'error');
-      }
-    } catch {
-      // Offline fallback: update local state genuinely
-      setReports(prev => prev.map(r => {
-        if (r.id === selectedReportToResolve.id) {
-          return {
-            ...r,
-            status: resolutionStatus,
-            resolutionNote: resolutionText.trim(),
-            ...(resolutionStatus === 'RESOLVED' ? { resolvedAt: new Date().toISOString() } : {})
-          };
-        }
-        return r;
-      }));
-      showToast('Status updated in local demo state (offline fallback)', 'success');
+      localUpdateReportStatus(selectedReportToResolve.id, resolutionStatus, resolutionText);
       setSelectedReportToResolve(null);
       setResolutionText('');
+      refreshCurrentOrg(currentOrgId);
+      showToast('Report status and resolution note saved.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to update report', 'error');
+    }
+  };
+
+  // Reset Demo Data
+  const handleResetData = () => {
+    if (confirm(lang === 'ta' ? 'அனைத்து மாதிரி பதிவுகளையும் ஆரம்ப நிலைக்கு மீட்டமைக்கவா?' : 'Reset all demonstration shifts and safety records to initial state?')) {
+      resetStoredState();
+      refreshCurrentOrg(currentOrgId);
+      showToast(t.demoResetSuccess, 'success');
     }
   };
 
@@ -342,18 +184,26 @@ export default function App() {
   const totalOvertimeHoursSum = shifts.filter(s => s.endTime).reduce((acc, s) => acc + (s.overtimeHours || 0), 0);
   const openReportsCount = reports.filter(r => r.status === 'OPEN' || r.status === 'IN_REVIEW').length;
 
+  const storedState = getStoredState();
+  const allOrgs = storedState.organizations || [];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 font-sans">
-      {/* Top Banner: Explicit Synthetic Demonstration Label */}
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-xl mb-4 flex flex-wrap justify-between items-center text-xs text-amber-900 gap-2 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-          <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] uppercase tracking-wide inline-block">
+      {/* Top Banner: Explicit Synthetic Demonstration Label & Storage Mode */}
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-xl mb-4 flex flex-wrap justify-between items-center text-xs text-amber-900 gap-2 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5">
+          <span className="bg-amber-200 text-amber-950 font-bold px-2.5 py-0.5 rounded text-[11px] uppercase tracking-wide inline-block">
             {t.syntheticDataNote}
           </span>
-          <span className="text-amber-800">{t.disclaimer}</span>
+          <span className="text-amber-900">{t.disclaimer}</span>
         </div>
-        <div className="font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full text-xs">
-          {t.sdgBadge}
+        <div className="flex items-center space-x-2">
+          <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded text-[11px] font-semibold">
+            💾 {t.storageModeBadge}
+          </span>
+          <div className="font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full text-xs">
+            {t.sdgBadge}
+          </div>
         </div>
       </div>
 
@@ -361,7 +211,7 @@ export default function App() {
       <header className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-black text-xl shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-black text-xl shadow-md" aria-hidden="true">
               FS
             </div>
             <div>
@@ -371,19 +221,21 @@ export default function App() {
           </div>
         </div>
 
-        {/* Global Controls: Language, Organization, Demo Role Selector */}
+        {/* Global Controls: Language, Organization, Demo Role Selector, Reset */}
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           {/* Language Switch */}
           <div className="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-100 text-xs font-medium">
             <button
+              type="button"
               onClick={() => setLang('en')}
-              className={`px-2.5 py-1 rounded-md transition ${lang === 'en' ? 'bg-white shadow text-slate-900 font-bold' : 'text-slate-600'}`}
+              className={`px-2.5 py-1.5 rounded-md transition cursor-pointer min-h-[34px] ${lang === 'en' ? 'bg-white shadow text-slate-900 font-bold' : 'text-slate-600'}`}
             >
               English
             </button>
             <button
+              type="button"
               onClick={() => setLang('ta')}
-              className={`px-2.5 py-1 rounded-md transition ${lang === 'ta' ? 'bg-white shadow text-slate-900 font-bold' : 'text-slate-600'}`}
+              className={`px-2.5 py-1.5 rounded-md transition cursor-pointer min-h-[34px] ${lang === 'ta' ? 'bg-white shadow text-slate-900 font-bold' : 'text-slate-600'}`}
             >
               தமிழ் (Tamil)
             </button>
@@ -392,14 +244,11 @@ export default function App() {
           {/* Org Selector */}
           <select
             value={currentOrgId}
-            onChange={(e) => {
-              setCurrentOrgId(e.target.value);
-              setLoading(true);
-            }}
+            onChange={(e) => setCurrentOrgId(e.target.value)}
             aria-label="Select Organization"
-            className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 shadow-sm focus:border-emerald-500 cursor-pointer"
+            className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 shadow-sm focus:border-emerald-500 cursor-pointer min-h-[38px]"
           >
-            {orgs.map(o => (
+            {allOrgs.map(o => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
@@ -407,18 +256,30 @@ export default function App() {
           {/* Demo Role Switcher (Explicitly labeled as simulation tool) */}
           <div className="inline-flex rounded-lg border border-slate-300 p-1 bg-white text-xs font-bold" title="Demonstration role selector (non-authenticating)">
             <button
+              type="button"
               onClick={() => setRole('worker')}
-              className={`px-3 py-1.5 rounded-md transition ${role === 'worker' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-3 py-1.5 rounded-md transition cursor-pointer min-h-[34px] ${role === 'worker' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
             >
               👷 {t.workerRole}
             </button>
             <button
+              type="button"
               onClick={() => setRole('employer')}
-              className={`px-3 py-1.5 rounded-md transition ${role === 'employer' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-3 py-1.5 rounded-md transition cursor-pointer min-h-[34px] ${role === 'employer' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
             >
               🏢 {t.employerRole}
             </button>
           </div>
+
+          {/* Reset Demo State Button */}
+          <button
+            type="button"
+            onClick={handleResetData}
+            title="Reset demo data to initial state"
+            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 transition cursor-pointer min-h-[36px]"
+          >
+            🔄 {t.resetDemoData}
+          </button>
         </div>
       </header>
 
@@ -438,6 +299,7 @@ export default function App() {
       {toast && (
         <div
           role="alert"
+          aria-live="assertive"
           className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-sm border ${
             toast.type === 'error'
               ? 'bg-rose-950 text-white border-rose-700'
@@ -453,7 +315,7 @@ export default function App() {
       {/* WORKER VIEW (Mobile-First, Large Targets, Tamil Capable) */}
       {/* ========================================================================= */}
       {role === 'worker' && (
-        <div className="space-y-6">
+        <main className="space-y-6">
           {/* Worker Identity Strip */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -470,7 +332,7 @@ export default function App() {
                 value={currentWorkerId}
                 onChange={(e) => setCurrentWorkerId(e.target.value)}
                 aria-label="Select active worker"
-                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-medium w-full sm:w-auto cursor-pointer"
+                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-medium w-full sm:w-auto cursor-pointer min-h-[38px]"
               >
                 {workers.map(w => (
                   <option key={w.id} value={w.id}>{w.name} ({w.role})</option>
@@ -487,7 +349,7 @@ export default function App() {
                   {t.activeShift}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black mt-3">
-                  {activeShift ? t.shiftStartedAt + ' ' + new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t.noActiveShift}
+                  {activeShift ? `${t.shiftStartedAt} ${new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : t.noActiveShift}
                 </h2>
               </div>
               <div className="text-right">
@@ -525,20 +387,22 @@ export default function App() {
             <div className="mt-6">
               {!activeShift ? (
                 <button
+                  type="button"
                   onClick={handleCheckIn}
                   disabled={actionLoading}
-                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 cursor-pointer"
+                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 cursor-pointer min-h-[56px] focus-visible:outline-2 focus-visible:outline-white"
                 >
-                  <span className="text-2xl">⏱</span>
+                  <span className="text-2xl" aria-hidden="true">⏱</span>
                   <span>{actionLoading ? t.checkingIn : t.checkIn}</span>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleCheckOut}
                   disabled={actionLoading}
-                  className="w-full py-4 px-6 bg-rose-500 hover:bg-rose-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-white shadow-lg shadow-rose-500/20 flex items-center justify-center space-x-2 cursor-pointer"
+                  className="w-full py-4 px-6 bg-rose-500 hover:bg-rose-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-white shadow-lg shadow-rose-500/20 flex items-center justify-center space-x-2 cursor-pointer min-h-[56px] focus-visible:outline-2 focus-visible:outline-white"
                 >
-                  <span className="text-2xl">🛑</span>
+                  <span className="text-2xl" aria-hidden="true">🛑</span>
                   <span>{actionLoading ? t.checkingOut : t.checkOut}</span>
                 </button>
               )}
@@ -548,7 +412,7 @@ export default function App() {
           {/* Module 1: Shift & Earnings History */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center space-x-2">
-              <span>📅</span>
+              <span aria-hidden="true">📅</span>
               <span>{t.recentShifts}</span>
             </h3>
 
@@ -599,15 +463,18 @@ export default function App() {
             {/* Form */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center space-x-2">
-                <span>🛡️</span>
+                <span aria-hidden="true">🛡️</span>
                 <span>{t.reportSafetyIssue}</span>
               </h3>
               <p className="text-xs text-slate-500 mb-4">{t.reportDescriptionHelp}</p>
 
               <form onSubmit={handleSubmitReport} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{t.issueTitle} *</label>
+                  <label htmlFor="issue-title-input" className="block text-xs font-bold text-slate-700 mb-1">
+                    {t.issueTitle} *
+                  </label>
                   <input
+                    id="issue-title-input"
                     type="text"
                     required
                     value={reportTitle}
@@ -619,11 +486,14 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">{t.issueCategory}</label>
+                    <label htmlFor="issue-category-select" className="block text-xs font-bold text-slate-700 mb-1">
+                      {t.issueCategory}
+                    </label>
                     <select
+                      id="issue-category-select"
                       value={reportCategory}
                       onChange={(e) => setReportCategory(e.target.value)}
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white cursor-pointer"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white cursor-pointer min-h-[38px]"
                     >
                       <option value="SAFETY_HAZARD">{t.catSafetyHazard}</option>
                       <option value="EQUIPMENT_ISSUE">{t.catEquipment}</option>
@@ -635,11 +505,14 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">{t.severity}</label>
+                    <label htmlFor="issue-severity-select" className="block text-xs font-bold text-slate-700 mb-1">
+                      {t.severity}
+                    </label>
                     <select
+                      id="issue-severity-select"
                       value={reportSeverity}
                       onChange={(e) => setReportSeverity(e.target.value)}
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-semibold cursor-pointer"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-semibold cursor-pointer min-h-[38px]"
                     >
                       <option value="LOW">🟢 {t.severityLow}</option>
                       <option value="MEDIUM">🟡 {t.severityMedium}</option>
@@ -650,8 +523,11 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{t.description} *</label>
+                  <label htmlFor="issue-description-input" className="block text-xs font-bold text-slate-700 mb-1">
+                    {t.description} *
+                  </label>
                   <textarea
+                    id="issue-description-input"
                     rows={3}
                     required
                     value={reportDescription}
@@ -661,14 +537,14 @@ export default function App() {
                   />
                 </div>
 
-                <p className="text-[11px] text-slate-400 italic">
+                <p className="text-[11px] text-slate-500 italic">
                   {t.confidentialNotice}
                 </p>
 
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl font-bold text-sm transition cursor-pointer"
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl font-bold text-sm transition cursor-pointer min-h-[46px]"
                 >
                   {actionLoading ? t.submittingReport : t.submitReport}
                 </button>
@@ -678,7 +554,7 @@ export default function App() {
             {/* Worker's Past Submitted Reports */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col">
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center space-x-2">
-                <span>📋</span>
+                <span aria-hidden="true">📋</span>
                 <span>{t.myReports}</span>
               </h3>
 
@@ -719,14 +595,14 @@ export default function App() {
               )}
             </div>
           </div>
-        </div>
+        </main>
       )}
 
       {/* ========================================================================= */}
       {/* EMPLOYER VIEW (Operations, Fatigue Monitoring & Report Resolution) */}
       {/* ========================================================================= */}
       {role === 'employer' && (
-        <div className="space-y-6">
+        <main className="space-y-6">
           {/* Operations Header */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -768,7 +644,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-                  <span>⚠️</span>
+                  <span aria-hidden="true">⚠️</span>
                   <span>{t.fatigueRiskAlerts}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">{t.fatigueAlertSummary}</p>
@@ -780,7 +656,7 @@ export default function App() {
 
             {fatigueAlerts.length === 0 ? (
               <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl border border-emerald-200 text-sm flex items-center space-x-2">
-                <span>✔</span>
+                <span aria-hidden="true">✔</span>
                 <span>{t.noFatigueAlerts}</span>
               </div>
             ) : (
@@ -817,7 +693,7 @@ export default function App() {
           {/* Module 2: Employer Safety Concern & Grievance Management */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center space-x-2">
-              <span>🛠️</span>
+              <span aria-hidden="true">🛠️</span>
               <span>{t.manageReports}</span>
             </h3>
 
@@ -859,12 +735,13 @@ export default function App() {
 
                     <div className="w-full md:w-auto">
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedReportToResolve(rep);
                           setResolutionStatus(rep.status === 'RESOLVED' ? 'IN_REVIEW' : 'RESOLVED');
                           setResolutionText(rep.resolutionNote || '');
                         }}
-                        className="w-full md:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition border border-slate-200 cursor-pointer"
+                        className="w-full md:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition border border-slate-200 cursor-pointer min-h-[36px]"
                       >
                         {t.updateStatus}
                       </button>
@@ -874,22 +751,28 @@ export default function App() {
               </div>
             )}
           </div>
-        </div>
+        </main>
       )}
 
       {/* Supervisor Resolution Modal */}
       {selectedReportToResolve && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div 
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-status-title"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+        >
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-lg text-slate-900">{t.updateStatus}</h3>
+            <h3 id="modal-status-title" className="font-bold text-lg text-slate-900">{t.updateStatus}</h3>
             <p className="text-xs text-slate-600 font-medium">{selectedReportToResolve.title}</p>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">{t.status}</label>
+              <label htmlFor="resolve-status-select" className="block text-xs font-bold text-slate-700 mb-1">{t.status}</label>
               <select
+                id="resolve-status-select"
                 value={resolutionStatus}
                 onChange={(e) => setResolutionStatus(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white font-semibold cursor-pointer"
+                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white font-semibold cursor-pointer min-h-[38px]"
               >
                 <option value="OPEN">{t.statusOpen}</option>
                 <option value="IN_REVIEW">{t.statusInReview}</option>
@@ -899,8 +782,9 @@ export default function App() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">{t.addResolutionNote}</label>
+              <label htmlFor="resolve-notes-textarea" className="block text-xs font-bold text-slate-700 mb-1">{t.addResolutionNote}</label>
               <textarea
+                id="resolve-notes-textarea"
                 rows={3}
                 value={resolutionText}
                 onChange={(e) => setResolutionText(e.target.value)}
@@ -911,14 +795,16 @@ export default function App() {
 
             <div className="flex justify-end space-x-2 pt-2">
               <button
+                type="button"
                 onClick={() => setSelectedReportToResolve(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer min-h-[36px]"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleUpdateReportStatus}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer min-h-[36px]"
               >
                 {t.saveUpdate}
               </button>
@@ -930,7 +816,7 @@ export default function App() {
       {/* Footer */}
       <footer className="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400 space-y-2">
         <p>FairShift 2026 — Addressing United Nations Sustainable Development Goal 8 (Decent Work and Economic Growth).</p>
-        <p className="text-[11px] text-slate-400">All data displayed is synthetic and created exclusively for hackathon evaluation.</p>
+        <p className="text-[11px] text-slate-500">All data displayed is synthetic and created exclusively for hackathon evaluation.</p>
       </footer>
     </div>
   );

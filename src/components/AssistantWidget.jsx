@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ASSISTANT_PROMPTS, answerAssistantQuery } from '../../shared/assistant.js';
 
 export default function AssistantWidget({ role, lang, org, worker, workers, shifts, reports, t }) {
-  const [messages, setMessages] = useState([
-    {
-      sender: 'assistant',
-      text: lang === 'ta'
-        ? `வணக்கம்! நான் ஃபேர்ஷிஃப்ட் வழிகாட்டி. உங்கள் உண்மையான பணி நேரம், சம்பளம், சோர்வு விதிகள் அல்லது பாதுகாப்பு புகார்கள் குறித்த சந்தேகங்களைத் தெளிவுபடுத்த நான் உதவ முடியும்.`
-        : `Hello! I am your FairShift Context Assistant. I provide deterministic explanations grounded in your actual recorded shifts, pay rates, fatigue rules, and safety reports. Select a suggested topic or ask a question below.`,
-      note: t.groundedNotice
-    }
-  ]);
+  // P0 Fix: Context isolation key triggers state reset when worker, org, role, or language changes
+  const contextKey = `${role}_${lang}_${org?.id || ''}_${worker?.id || ''}`;
+
+  const [messages, setMessages] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
+
+  // Initialize or isolate conversation history whenever the context key changes
+  useEffect(() => {
+    const welcomeText = lang === 'ta'
+      ? role === 'worker'
+        ? `வணக்கம் ${worker?.name || ''}! நான் ஃபேர்ஷிஃப்ட் தொழிலாளர் வழிகாட்டி. உங்கள் பணி நேரம், சம்பளம், சோர்வு எச்சரிக்கை அல்லது பாதுகாப்பு புகார்கள் குறித்த தெளிவான விளக்கங்களை கீழே தேர்ந்தெடுக்கலாம்.`
+        : `வணக்கம் நிர்வாக மேற்பார்வையாளர்! நான் ${org?.name || ''} செயல்பாட்டு வழிகாட்டி. பணியாளர் சோர்வு எச்சரிக்கைகள், திறந்திருக்கும் தீவிர புகார்கள் மற்றும் வேலை நேர சுருக்கங்களை நான் வழங்க முடியும்.`
+      : role === 'worker'
+        ? `Hello ${worker?.name || ''}! I am your FairShift Worker Advisor. I provide grounded explanations regarding your recorded shifts, pay rate (${org?.symbol || '₹'}${worker?.hourlyRate || 0}/hr), rest rules, and submitted safety reports.`
+        : `Welcome Supervisor. I am the Operations Advisor for ${org?.name || 'this organization'}. I can summarize active fatigue alerts, open high-severity hazards, and aggregate duty hours.`;
+
+    setMessages([
+      {
+        sender: 'assistant',
+        text: welcomeText,
+        note: t.groundedNotice
+      }
+    ]);
+    setCustomInput('');
+  }, [contextKey]);
 
   const prompts = (ASSISTANT_PROMPTS[lang] || ASSISTANT_PROMPTS.en)[role] || [];
 
@@ -47,36 +62,39 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-      {/* Header bar */}
-      <div 
+    <section 
+      aria-label={t.assistantTitle}
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6"
+    >
+      {/* Semantic Accessible Header bar */}
+      <button 
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-4 flex justify-between items-center cursor-pointer select-none"
+        aria-expanded={isExpanded}
+        aria-controls="assistant-panel-content"
+        className="w-full text-left bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-4 flex justify-between items-center cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-emerald-400"
       >
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-base shadow">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-base shadow" aria-hidden="true">
             💡
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h3 className="font-bold text-sm tracking-tight">{t.assistantTitle}</h3>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200 border border-indigo-700">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-900/90 text-indigo-200 border border-indigo-700">
                 {role === 'worker' ? t.assistantRoleWorker : t.assistantRoleEmployer}
               </span>
             </div>
-            <p className="text-xs text-slate-300">{t.assistantSubtitle}</p>
+            <p className="text-xs text-slate-300 mt-0.5">{t.assistantSubtitle}</p>
           </div>
         </div>
-        <button 
-          aria-label={isExpanded ? 'Collapse Assistant' : 'Expand Assistant'} 
-          className="text-slate-400 hover:text-white text-lg font-bold px-2 cursor-pointer"
-        >
-          {isExpanded ? '▲' : '▼'}
-        </button>
-      </div>
+        <div className="text-slate-300 hover:text-white text-xs font-semibold px-2 py-1 rounded bg-slate-800/60 border border-slate-700">
+          {isExpanded ? (lang === 'ta' ? 'மறைக்க ▲' : 'Collapse ▲') : (lang === 'ta' ? 'காட்டுக ▼' : 'Expand ▼')}
+        </div>
+      </button>
 
       {isExpanded && (
-        <div className="p-4 sm:p-5 space-y-4">
+        <div id="assistant-panel-content" className="p-4 sm:p-5 space-y-4">
           {/* Quick Prompts (especially beneficial for low-literacy frontline workers) */}
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
@@ -86,8 +104,9 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
               {prompts.map((p) => (
                 <button
                   key={p.id}
+                  type="button"
                   onClick={() => handleQuery(p.text, p.id)}
-                  className="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-medium px-3 py-1.5 rounded-lg border border-slate-200 transition text-left cursor-pointer"
+                  className="text-xs bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 font-medium px-3 py-2 rounded-xl border border-slate-200 transition text-left cursor-pointer min-h-[38px] focus-visible:outline-2 focus-visible:outline-emerald-500"
                 >
                   {p.text}
                 </button>
@@ -96,7 +115,11 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
           </div>
 
           {/* Conversation Stream */}
-          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 max-h-72 overflow-y-auto space-y-3">
+          <div 
+            role="log" 
+            aria-live="polite" 
+            className="bg-slate-50 rounded-xl p-4 border border-slate-200 max-h-72 overflow-y-auto space-y-3"
+          >
             {messages.map((m, idx) => (
               <div 
                 key={idx} 
@@ -132,25 +155,26 @@ export default function AssistantWidget({ role, lang, org, worker, workers, shif
               type="text"
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
+              aria-label={t.askCustomPlaceholder}
               placeholder={t.askCustomPlaceholder}
               className="flex-1 text-xs sm:text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:border-emerald-500 bg-white"
             />
             <button
               type="submit"
               disabled={!customInput.trim()}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer"
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer min-h-[42px]"
             >
               {t.sendQuestion}
             </button>
           </form>
 
           {/* Grounding notice */}
-          <div className="text-[11px] text-slate-400 bg-slate-100/70 p-2 rounded-lg flex items-center space-x-1.5">
-            <span className="text-emerald-600 font-bold">🔒</span>
+          <div className="text-[11px] text-slate-500 bg-slate-100/80 p-2.5 rounded-xl flex items-center space-x-2">
+            <span className="text-emerald-600 font-bold" aria-hidden="true">🔒</span>
             <span>{t.groundedNotice}</span>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
