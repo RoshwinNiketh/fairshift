@@ -3,10 +3,10 @@
 > Transparent Shifts, Fair Pay & Worker Safety for Frontline Construction and College Support Services.
 > Built for Hackathon SDG 8 (Decent Work and Economic Growth).
 
-[![Tests](https://img.shields.io/badge/tests-32%20passing-brightgreen)](#automated-testing)
+[![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)](#automated-testing)
 [![SDG](https://img.shields.io/badge/SDG-8%20Decent%20Work-blue)](#1-chosen-challenge-vertical--sdg-8-problem-statement)
 [![Architecture](https://img.shields.io/badge/Assistant-Context--Aware%20Deterministic-indigo)](#5-fairshift-context-aware-smart-assistant)
-[![Persistence](https://img.shields.io/badge/Storage-Versioned%20Local%20Demo-emerald)](#6-architecture--technology-stack)
+[![Deploy Ready](https://img.shields.io/badge/Deploy-Vercel%20%2F%20Static%20Vite%20Ready-emerald)](#9-deploying-to-vercel--running-locally)
 
 ---
 
@@ -67,7 +67,7 @@ To meet the evaluation criteria for a smart, dynamic assistant without introduci
 
 ### How It Works:
 - **Zero Hallucination / Grounded Execution**: The assistant does not invent numbers or claim legal authority. It queries the actual state of the application: active worker, organization settings, completed shifts, fatigue alerts, and submitted grievance records.
-- **Context Isolation (P0 Fix)**: History is keyed by `role_lang_orgId_workerId`. When the user switches worker, organization, role, or language, previous conversations are isolated so messages from one context are never presented as answers for another.
+- **Context Isolation**: History is strictly keyed by `role_lang_orgId_workerId`. When the user switches worker, organization, role, or language, previous conversations are isolated so messages from one context are never presented as answers for another.
 - **Role & Persona Sensitivity**:
   - **Worker View**: Focuses on individual net earnings, itemized overtime math, personal fatigue evaluation, safety report statuses, and guidance on reporting hazards.
   - **Employer View**: Focuses on organization-wide fatigue alerts, unresolved critical safety hazards, aggregate labor costs, and rule threshold reviews.
@@ -88,7 +88,7 @@ flowchart TD
         I18N[Tamil / English Localization]
     end
 
-    subgraph Backend["API Layer (Node.js 20 + Express)"]
+    subgraph Backend["API Layer (Node.js 20 + Express - Optional for Vercel Static Deploy)"]
         REST[REST API: 0.0.0.0:8080]
         VAL[Schema & Enum Validation Layer]
         SERVER_STORE[(In-Memory Synthetic Data Store)]
@@ -98,13 +98,12 @@ flowchart TD
     AST --> CALC_FE
     UI --> STORE
     AST --> STORE
-    REST --> VAL --> SERVER_STORE
+    REST -. Optional Backend API .-> VAL --> SERVER_STORE
 ```
 
-- **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build (clean native CSS compilation via `@tailwindcss/vite`, no development CDNs).
+- **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build. **Runs 100% client-side via `shared/storage.js` for instant Vercel static deployment.**
 - **Demo Data Layer (`shared/storage.js`)**: Reliable, versioned browser-local storage with recovery safeguards against corrupted JSON, maintaining shift check-ins, check-outs, and grievance resolution across page reloads. Includes an explicit **Reset Demo Data** control.
-- **Backend**: Lightweight Node.js/Express REST server listening on `0.0.0.0` and dynamic `PORT`.
-- **Containerization**: Multi-stage Dockerfile (`node:20-alpine`) ready for Google Cloud Run deployment when cloud credentials are provisioned.
+- **Backend**: Lightweight Node.js/Express REST server listening on `0.0.0.0` and dynamic `PORT` (remains in repository for container/Cloud Run environments).
 
 ---
 
@@ -112,7 +111,7 @@ flowchart TD
 
 1. **Shift Check In & Check Out**: Live elapsed timer and real-time counter displaying estimated earnings and overtime activation.
 2. **Shift History & Pay Breakdown**: Itemizes regular hours, overtime hours, base hourly pay, overtime rate, and total estimated earnings with Indian Rupee (₹) currency formatting.
-3. **Safety & Grievance Reporting**: Category and severity selection (Low to Critical Risk), confidential account-linked tracking, and real-time status progression.
+3. **Safety & Grievance Reporting**: Category and severity selection (Low to Critical Risk), account-linked tracking, and real-time status progression.
 4. **Employer Operations Dashboard**: Aggregated metrics on active workforce, duty hours, overtime ratios, and pending safety concerns.
 5. **Rule-Based Fatigue Monitor**: Alerts supervisors with specific reasons in English or Tamil (excessive daily shift or short recovery rest gap) and calculates 7-day rolling totals.
 6. **Bilingual Toggle**: Seamless switching between English and native Tamil (`தமிழ்`) with zero placeholder text.
@@ -121,13 +120,20 @@ flowchart TD
 
 ## 8. Automated Testing & Verification
 
-Run the comprehensive test suite (32 automated tests passing):
+Run the comprehensive test suite (40 automated tests passing):
 
 ```bash
 npm test
 ```
 
 ### Verified Test Breakdown:
+- **Browser Smoke Lifecycle Tests (`test/browser_smoke.test.js`)**:
+  - Full check-in, page refresh simulation, active shift retention.
+  - Check-out and itemized earnings calculation.
+  - Grievance submission and persistence across browser refresh.
+  - Employer grievance resolution and worker resolution reflection.
+  - Multi-worker, multi-org, and bilingual assistant context isolation.
+  - One-click demo data reset restoring pristine initial state.
 - **Assistant Tests (`test/assistant.test.js` & `test/assistant_isolation.test.js`)**:
   - Dynamic earnings calculations matching selected worker.
   - Fatigue warning identification for fatigued workers.
@@ -161,8 +167,17 @@ npm test
 
 ---
 
-## 9. Running Locally
+## 9. Deploying to Vercel & Running Locally
 
+### Deploying to Vercel (Instant Zero-Config Static Vite Deployment)
+FairShift is fully self-contained and pre-configured for Vercel:
+- **Framework Preset**: `Vite`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+- *No environment variables or external backend server required.*
+
+### Running Locally
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/RoshwinNiketh/fairshift.git
@@ -176,11 +191,15 @@ npm test
    ```bash
    npm run build
    ```
-4. **Start the production server**:
+4. **Preview locally**:
+   ```bash
+   npm run preview
+   ```
+   Or run the full-stack server:
    ```bash
    npm start
    ```
-   Open `http://localhost:8080` in your web browser.
+   Open `http://localhost:8080` or `http://localhost:4173`.
 
 ---
 
@@ -198,16 +217,7 @@ npm test
 ## 11. Assumptions, Limitations & Disclaimers
 
 1. **Synthetic Data Disclosure**: All organizations, worker names, phone numbers, and logged incidents are fictional synthetic fixtures created exclusively for hackathon evaluation.
-2. **Browser-Local Persistence**: Interactive modifications are saved in the browser's localStorage (`fairshift_demo_state_v1`). Users can reset state at any time using the "Reset Demo Data" button.
+2. **Browser-Local Persistence**: Interactive modifications are saved in the browser's localStorage (`fairshift_demo_state_v1`). Users can reset state at any time using the "Reset Demo Data" button. Multi-device real-time sync is not present.
 3. **Non-Payroll Compliance Disclaimer**: FairShift provides estimated calculations for workplace transparency and personal verification. It does not constitute official legal payroll compliance, binding tax calculations, or statutory wage slips.
 4. **Account-Linked vs Anonymous Reporting**: Reports are account-linked so supervisors can be held accountable for resolving them; true anonymous reporting without worker identity is intentionally not claimed.
-5. **Demonstration Role Selector**: The UI role selector is provided for judging convenience and does not enforce cryptographic multi-tenant RBAC.
-
----
-
-## 12. Future Scalability (Roadmap)
-
-- **Cloud Datastore / Firestore Integration**: Seamless handoff from local storage to Google Cloud Firestore when cloud credentials are fully provisioned.
-- **Offline PWA & Service Workers**: Background sync for shift check-ins and hazard reports in remote construction basements with intermittent cellular connectivity.
-- **Voice Assistant Integration**: Web Speech API for voice-driven prompt interaction in Tamil and other regional languages.
-- **Digital Grievance Whistleblower Protocol**: Zero-knowledge proof (ZKP) grievance verification for escalated external regulatory reviews.
+5. **Demonstration Role Selector**: The UI role selector is provided for judging convenience and does not enforce cryptographic multi-tenant RBAC or production authentication.
