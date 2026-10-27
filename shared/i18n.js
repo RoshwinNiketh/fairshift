@@ -88,7 +88,17 @@ export const translations = {
     dailyThreshold: "Standard Shift (Hours/Day)",
     otMultiplier: "Overtime Pay Multiplier",
     maxDailyThreshold: "Max Safe Daily Limit (Hours)",
-    minRestInterval: "Min Rest Interval (Hours)"
+    minRestInterval: "Min Rest Interval (Hours)",
+
+    // Smart Assistant
+    assistantTitle: "FairShift Context Assistant",
+    assistantSubtitle: "Deterministic, rule-grounded guidance based on your actual shifts, pay policies, and logged reports.",
+    suggestedQuestions: "Suggested Quick Questions",
+    askCustomPlaceholder: "Ask about your earnings, overtime, fatigue rules, or reports...",
+    sendQuestion: "Ask",
+    groundedNotice: "Responses are computed directly from current organization records and configured safety rules (No generative AI assumptions).",
+    assistantRoleWorker: "Worker Advisor",
+    assistantRoleEmployer: "Operations Advisor"
   },
 
   ta: {
@@ -180,6 +190,16 @@ export const translations = {
     dailyThreshold: "வழக்கமான ஷிஃப்ட் (மணி/நாள்)",
     otMultiplier: "OT ஊதியப் பெருக்கி",
     maxDailyThreshold: "பாதுகாப்பான அதிகபட்ச பணி நேரம் (மணி)",
-    minRestInterval: "குறைந்தபட்ச ஓய்வு இடைவெளி (மணி)"
+    minRestInterval: "குறைந்தபட்ச ஓய்வு இடைவெளி (மணி)",
+
+    // Smart Assistant
+    assistantTitle: "ஃபேர்ஷிஃப்ட் வழிகாட்டி (Assistant)",
+    assistantSubtitle: "உங்கள் பணி நேரம், ஊதியக் கொள்கைகள் மற்றும் புகார்களின் அடிப்படையிலான தெளிவான விளக்கங்கள்.",
+    suggestedQuestions: "பரிந்துரைக்கப்பட்ட விரைவு கேள்விகள்",
+    askCustomPlaceholder: "உங்கள் சம்பளம், OT, சோர்வு எச்சரிக்கை அல்லது புகார் பற்றி கேட்கவும்...",
+    sendQuestion: "கேட்கவும்",
+    groundedNotice: "பதில்கள் உங்கள் உண்மையான பதிவுகள் மற்றும் பாதுகாப்பு விதிகளின் அடிப்படையில் மட்டுமே நேரடியாக வழங்கப்படுகின்றன.",
+    assistantRoleWorker: "தொழிலாளர் வழிகாட்டி",
+    assistantRoleEmployer: "நிர்வாக வழிகாட்டி"
   }
 };

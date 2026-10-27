@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { translations } from '../shared/i18n.js';
 import { calculateShiftEarnings, calculateDurationHours, evaluateFatigueRisk } from '../shared/calculations.js';
 import { INITIAL_DATA } from '../shared/seedData.js';
+import AssistantWidget from './components/AssistantWidget.jsx';
 
 export default function App() {
   const [lang, setLang] = useState('en');
@@ -71,17 +72,17 @@ export default function App() {
       const res = await fetch(`/api/org/${orgId}/data`);
       if (res.ok) {
         const data = await res.json();
-        setWorkers(data.workers || []);
+        const newWorkers = data.workers || [];
+        setWorkers(newWorkers);
         setShifts(data.shifts || []);
         setReports(data.reports || []);
         setFatigueAlerts(data.fatigueAlerts || []);
-        if (data.workers && data.workers.length > 0) {
-          // If current worker doesn't belong to this org, select first worker
-          const currentBelongs = data.workers.some(w => w.id === currentWorkerId);
-          if (!currentBelongs) {
-            setCurrentWorkerId(data.workers[0].id);
-          }
-        }
+        
+        // Priority 2 UX Fix: Guard against stale worker selection when switching organizations
+        setCurrentWorkerId(prevId => {
+          const stillValid = newWorkers.some(w => w.id === prevId);
+          return stillValid ? prevId : (newWorkers[0]?.id || '');
+        });
       } else {
         const errJson = await res.json().catch(() => ({}));
         showToast(errJson.error || `Failed to fetch data for organization ${orgId}`, 'error');
@@ -96,7 +97,11 @@ export default function App() {
       setShifts(orgShifts);
       setReports(orgReports);
       setFatigueAlerts(recomputeAlerts(orgWorkers, orgShifts, org));
-      if (orgWorkers.length > 0) setCurrentWorkerId(orgWorkers[0].id);
+      
+      setCurrentWorkerId(prevId => {
+        const stillValid = orgWorkers.some(w => w.id === prevId);
+        return stillValid ? prevId : (orgWorkers[0]?.id || '');
+      });
       showToast('Operating in local-storage demo mode (server unreachable)', 'error');
     } finally {
       setLoading(false);
@@ -111,6 +116,7 @@ export default function App() {
   const currentWorker = workers.find(w => w.id === currentWorkerId) || workers[0];
   const activeShift = shifts.find(s => s.id === (currentWorker?.activeShiftId) || (s.workerId === currentWorker?.id && !s.endTime));
   const currentOrg = orgs.find(o => o.id === currentOrgId) || orgs[0];
+  const sym = currentOrg?.symbol || '₹';
 
   // Live elapsed counter
   useEffect(() => {
@@ -164,7 +170,7 @@ export default function App() {
       };
       setShifts(prev => [newShift, ...prev]);
       setWorkers(prev => prev.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: newShift.id } : w));
-      showToast('Checked in locally (offline fallback)', 'success');
+      showToast('Checked in locally (offline demo fallback)', 'success');
     } finally {
       setActionLoading(false);
     }
@@ -184,8 +190,8 @@ export default function App() {
         const data = await res.json();
         showToast(
           lang === 'ta'
-            ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: $${data.earnings?.totalEstimatedEarnings}`
-            : `Checked out successfully! Estimated Earnings: $${data.earnings?.totalEstimatedEarnings}`,
+            ? `பணி முடிந்தது! கணக்கிடப்பட்ட ஊதியம்: ${sym}${data.earnings?.totalEstimatedEarnings}`
+            : `Checked out successfully! Estimated Earnings: ${sym}${data.earnings?.totalEstimatedEarnings}`,
           'success'
         );
         await fetchData(currentOrgId);
@@ -215,7 +221,7 @@ export default function App() {
         const updatedWorkers = workers.map(w => w.id === currentWorker.id ? { ...w, activeShiftId: null } : w);
         setWorkers(updatedWorkers);
         setFatigueAlerts(recomputeAlerts(updatedWorkers, updatedShifts, currentOrg));
-        showToast(`Checked out locally. Estimated: $${earnings.totalEstimatedEarnings}`, 'success');
+        showToast(`Checked out locally. Estimated: ${sym}${earnings.totalEstimatedEarnings}`, 'success');
       } else {
         showToast('Check out failed: no active shift found', 'error');
       }
@@ -272,7 +278,7 @@ export default function App() {
       setReports(prev => [newRep, ...prev]);
       setReportTitle('');
       setReportDescription('');
-      showToast('Report recorded in local state (offline mode)', 'success');
+      showToast('Report recorded in local demo state (offline fallback)', 'success');
     } finally {
       setActionLoading(false);
     }
@@ -312,7 +318,7 @@ export default function App() {
         }
         return r;
       }));
-      showToast('Status updated in local state (offline mode)', 'success');
+      showToast('Status updated in local demo state (offline fallback)', 'success');
       setSelectedReportToResolve(null);
       setResolutionText('');
     }
@@ -339,7 +345,7 @@ export default function App() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 font-sans">
       {/* Top Banner: Explicit Synthetic Demonstration Label */}
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded mb-4 flex flex-wrap justify-between items-center text-xs text-amber-900 gap-2">
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-xl mb-4 flex flex-wrap justify-between items-center text-xs text-amber-900 gap-2 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
           <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] uppercase tracking-wide inline-block">
             {t.syntheticDataNote}
@@ -391,7 +397,7 @@ export default function App() {
               setLoading(true);
             }}
             aria-label="Select Organization"
-            className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 shadow-sm focus:border-emerald-500"
+            className="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 shadow-sm focus:border-emerald-500 cursor-pointer"
           >
             {orgs.map(o => (
               <option key={o.id} value={o.id}>{o.name}</option>
@@ -415,6 +421,18 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Priority 1: Context-Aware Smart Assistant Widget */}
+      <AssistantWidget 
+        role={role}
+        lang={lang}
+        org={currentOrg}
+        worker={currentWorker}
+        workers={workers}
+        shifts={shifts}
+        reports={reports}
+        t={t}
+      />
 
       {/* Toast Notification (Differentiating Success vs Error) */}
       {toast && (
@@ -452,7 +470,7 @@ export default function App() {
                 value={currentWorkerId}
                 onChange={(e) => setCurrentWorkerId(e.target.value)}
                 aria-label="Select active worker"
-                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-medium w-full sm:w-auto"
+                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-medium w-full sm:w-auto cursor-pointer"
               >
                 {workers.map(w => (
                   <option key={w.id} value={w.id}>{w.name} ({w.role})</option>
@@ -475,7 +493,7 @@ export default function App() {
               <div className="text-right">
                 <div className="text-xs text-slate-400">{t.hourlyRateLabel}</div>
                 <div className="text-lg font-bold text-emerald-400">
-                  ${currentWorker?.hourlyRate?.toFixed(2)}/hr
+                  {sym}{currentWorker?.hourlyRate?.toFixed(2)}/hr
                 </div>
               </div>
             </div>
@@ -492,7 +510,7 @@ export default function App() {
                 <div>
                   <div className="text-xs text-slate-400">{t.estimatedLivePay}</div>
                   <div className="text-2xl sm:text-3xl font-mono font-bold text-emerald-400 mt-1">
-                    ${liveEarnings?.totalEstimatedEarnings?.toFixed(2)}
+                    {sym}{liveEarnings?.totalEstimatedEarnings?.toFixed(2)}
                   </div>
                   {liveEarnings?.isOvertime && (
                     <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded border border-amber-500/40 mt-1 inline-block">
@@ -509,7 +527,7 @@ export default function App() {
                 <button
                   onClick={handleCheckIn}
                   disabled={actionLoading}
-                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2"
+                  className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <span className="text-2xl">⏱</span>
                   <span>{actionLoading ? t.checkingIn : t.checkIn}</span>
@@ -518,7 +536,7 @@ export default function App() {
                 <button
                   onClick={handleCheckOut}
                   disabled={actionLoading}
-                  className="w-full py-4 px-6 bg-rose-500 hover:bg-rose-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-white shadow-lg shadow-rose-500/20 flex items-center justify-center space-x-2"
+                  className="w-full py-4 px-6 bg-rose-500 hover:bg-rose-400 active:scale-[0.99] transition rounded-2xl font-black text-lg text-white shadow-lg shadow-rose-500/20 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <span className="text-2xl">🛑</span>
                   <span>{actionLoading ? t.checkingOut : t.checkOut}</span>
@@ -551,10 +569,10 @@ export default function App() {
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mt-1">
-                        {t.regularHours}: {s.regularHours}h (${s.regularPay})
+                        {t.regularHours}: {s.regularHours}h ({sym}{s.regularPay})
                         {s.overtimeHours > 0 && (
                           <span className="ml-2 text-amber-700 font-semibold">
-                            | {t.overtimeHours}: {s.overtimeHours}h (${s.overtimePay})
+                            | {t.overtimeHours}: {s.overtimeHours}h ({sym}{s.overtimePay})
                           </span>
                         )}
                       </div>
@@ -562,7 +580,7 @@ export default function App() {
                     <div className="text-right">
                       <div className="text-xs text-slate-400">{t.totalEstimatedEarnings}</div>
                       <div className="text-lg font-black text-slate-900 font-mono">
-                        ${s.totalEstimatedEarnings?.toFixed(2)}
+                        {sym}{s.totalEstimatedEarnings?.toFixed(2)}
                       </div>
                       {s.overtimeHours > 0 && (
                         <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">
@@ -594,7 +612,7 @@ export default function App() {
                     required
                     value={reportTitle}
                     onChange={(e) => setReportTitle(e.target.value)}
-                    placeholder="e.g. Missing guardrails on Sector 4 staging"
+                    placeholder="e.g. Broken guard rail on Pier 3 scaffold"
                     className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:border-emerald-500"
                   />
                 </div>
@@ -605,7 +623,7 @@ export default function App() {
                     <select
                       value={reportCategory}
                       onChange={(e) => setReportCategory(e.target.value)}
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white cursor-pointer"
                     >
                       <option value="SAFETY_HAZARD">{t.catSafetyHazard}</option>
                       <option value="EQUIPMENT_ISSUE">{t.catEquipment}</option>
@@ -621,7 +639,7 @@ export default function App() {
                     <select
                       value={reportSeverity}
                       onChange={(e) => setReportSeverity(e.target.value)}
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-semibold"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white font-semibold cursor-pointer"
                     >
                       <option value="LOW">🟢 {t.severityLow}</option>
                       <option value="MEDIUM">🟡 {t.severityMedium}</option>
@@ -650,7 +668,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl font-bold text-sm transition"
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl font-bold text-sm transition cursor-pointer"
                 >
                   {actionLoading ? t.submittingReport : t.submitReport}
                 </button>
@@ -846,7 +864,7 @@ export default function App() {
                           setResolutionStatus(rep.status === 'RESOLVED' ? 'IN_REVIEW' : 'RESOLVED');
                           setResolutionText(rep.resolutionNote || '');
                         }}
-                        className="w-full md:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition border border-slate-200"
+                        className="w-full md:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition border border-slate-200 cursor-pointer"
                       >
                         {t.updateStatus}
                       </button>
@@ -871,7 +889,7 @@ export default function App() {
               <select
                 value={resolutionStatus}
                 onChange={(e) => setResolutionStatus(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white font-semibold"
+                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white font-semibold cursor-pointer"
               >
                 <option value="OPEN">{t.statusOpen}</option>
                 <option value="IN_REVIEW">{t.statusInReview}</option>
@@ -894,13 +912,13 @@ export default function App() {
             <div className="flex justify-end space-x-2 pt-2">
               <button
                 onClick={() => setSelectedReportToResolve(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdateReportStatus}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow cursor-pointer"
               >
                 {t.saveUpdate}
               </button>

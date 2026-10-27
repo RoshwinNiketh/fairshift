@@ -1,8 +1,10 @@
 /**
  * Seed data for FairShift Demo
  * Two fictional organizations:
- * 1. BuildRight Infra Ltd (Construction Site)
- * 2. Apex Heights College (Housekeeping & Facility Maintenance)
+ * 1. BuildRight Infrastructure Ltd (Construction Site - Heavy civil / metro station)
+ * 2. Apex Heights College Facilities (Higher Ed Support - Housekeeping & maintenance)
+ * 
+ * Uses Indian Rupee (INR ₹) representing frontline construction & campus operations.
  */
 
 export const INITIAL_DATA = {
@@ -10,13 +12,13 @@ export const INITIAL_DATA = {
     {
       id: "org-buildright",
       name: "BuildRight Infrastructure Ltd",
-      industry: "Construction & Heavy Civil",
-      currency: "USD",
-      symbol: "$",
+      industry: "Metro Rail & Civil Construction",
+      currency: "INR",
+      symbol: "₹",
       settings: {
         standardDailyHours: 8,
         overtimeMultiplier: 1.5,
-        defaultHourlyRate: 22.50,
+        defaultHourlyRate: 120.00, // ₹120/hr base rate (~₹960/standard 8h day)
         maxDailyHoursThreshold: 10,
         minRestHoursThreshold: 11,
         maxWeeklyHoursThreshold: 48
@@ -25,13 +27,13 @@ export const INITIAL_DATA = {
     {
       id: "org-apexcollege",
       name: "Apex Heights College Facilities",
-      industry: "Higher Ed Support & Housekeeping",
-      currency: "USD",
-      symbol: "$",
+      industry: "Campus Housekeeping & Support Services",
+      currency: "INR",
+      symbol: "₹",
       settings: {
         standardDailyHours: 7.5,
         overtimeMultiplier: 1.5,
-        defaultHourlyRate: 18.00,
+        defaultHourlyRate: 95.00, // ₹95/hr base rate (~₹712.50/standard 7.5h day)
         maxDailyHoursThreshold: 9.5,
         minRestHoursThreshold: 12,
         maxWeeklyHoursThreshold: 45
@@ -44,28 +46,28 @@ export const INITIAL_DATA = {
       id: "w-c1",
       orgId: "org-buildright",
       name: "Muthu Velan",
-      role: "Rebar & Scaffold Worker",
-      hourlyRate: 24.00,
+      role: "Rebar & Scaffold Lead",
+      hourlyRate: 130.00,
       activeShiftId: null,
-      phone: "+1-555-0192"
+      phone: "+91-98401-23456"
     },
     {
       id: "w-c2",
       orgId: "org-buildright",
-      name: "David Chen",
-      role: "Concrete Paving Specialist",
-      hourlyRate: 23.00,
+      name: "Ramesh Kumar",
+      role: "Concrete Pouring Technician",
+      hourlyRate: 125.00,
       activeShiftId: null,
-      phone: "+1-555-0143"
+      phone: "+91-98402-34567"
     },
     {
       id: "w-c3",
       orgId: "org-buildright",
-      name: "Elena Rostova",
-      role: "Heavy Equipment Crane Spotter",
-      hourlyRate: 25.00,
+      name: "Priya Sundaram",
+      role: "Crane Signal & Safety Spotter",
+      hourlyRate: 135.00,
       activeShiftId: null,
-      phone: "+1-555-0188"
+      phone: "+91-98403-45678"
     },
 
     // College Housekeeping Staff
@@ -73,23 +75,23 @@ export const INITIAL_DATA = {
       id: "w-h1",
       orgId: "org-apexcollege",
       name: "Anandhi Raman",
-      role: "Senior Sanitation Technician",
-      hourlyRate: 19.50,
+      role: "Senior Sanitation Attendant",
+      hourlyRate: 100.00,
       activeShiftId: null,
-      phone: "+1-555-0321"
+      phone: "+91-97101-56789"
     },
     {
       id: "w-h2",
       orgId: "org-apexcollege",
-      name: "Marcus Miller",
-      role: "Residence Hall Custodian",
-      hourlyRate: 18.00,
+      name: "Murugan Selvam",
+      role: "Hostel & Lab Maintenance Staff",
+      hourlyRate: 95.00,
       activeShiftId: null,
-      phone: "+1-555-0344"
+      phone: "+91-97102-67890"
     }
   ],
   shifts: [
-    // BuildRight Construction Shifts (Overtime & Fatigue Examples)
+    // BuildRight Construction Shifts (Shows overtime & fatigue risk)
     {
       id: "sh-101",
       orgId: "org-buildright",
@@ -98,48 +100,48 @@ export const INITIAL_DATA = {
       startTime: "2026-10-24T07:00:00Z",
       endTime: "2026-10-24T18:00:00Z",
       hours: 11.0,
-      hourlyRate: 24.0,
+      hourlyRate: 130.0,
       standardHours: 8,
       regularHours: 8,
       overtimeHours: 3.0,
-      regularPay: 192.0,
-      overtimePay: 108.0,
-      totalEstimatedEarnings: 300.0,
-      notes: "Basement structural pour continuous shift"
+      regularPay: 1040.0, // 8 * 130
+      overtimePay: 585.0,  // 3 * (130 * 1.5 = 195)
+      totalEstimatedEarnings: 1625.0,
+      notes: "Station box foundation raft concrete pour"
     },
     {
       id: "sh-102",
       orgId: "org-buildright",
       workerId: "w-c1",
       workerName: "Muthu Velan",
-      startTime: "2026-10-25T04:00:00Z",
-      endTime: "2026-10-25T14:30:00Z",
+      startTime: "2026-10-25T04:30:00Z",
+      endTime: "2026-10-25T15:00:00Z",
       hours: 10.5,
-      hourlyRate: 24.0,
+      hourlyRate: 130.0,
       standardHours: 8,
       regularHours: 8,
       overtimeHours: 2.5,
-      regularPay: 192.0,
-      overtimePay: 90.0,
-      totalEstimatedEarnings: 282.0,
-      notes: "Early inspection cycle - minimal rest recovery"
+      regularPay: 1040.0,
+      overtimePay: 487.5, // 2.5 * 195
+      totalEstimatedEarnings: 1527.5,
+      notes: "Emergency scaffold de-shuttering (Short 10.5h rest gap)"
     },
     {
       id: "sh-103",
       orgId: "org-buildright",
       workerId: "w-c2",
-      workerName: "David Chen",
-      startTime: "2026-10-25T07:30:00Z",
-      endTime: "2026-10-25T16:00:00Z",
+      workerName: "Ramesh Kumar",
+      startTime: "2026-10-25T08:00:00Z",
+      endTime: "2026-10-25T16:30:00Z",
       hours: 8.5,
-      hourlyRate: 23.0,
+      hourlyRate: 125.0,
       standardHours: 8,
       regularHours: 8,
       overtimeHours: 0.5,
-      regularPay: 184.0,
-      overtimePay: 17.25,
-      totalEstimatedEarnings: 201.25,
-      notes: "North access driveway paving"
+      regularPay: 1000.0,
+      overtimePay: 93.75, // 0.5 * (125 * 1.5 = 187.5)
+      totalEstimatedEarnings: 1093.75,
+      notes: "Curing inspection on Pier 14"
     },
 
     // College Housekeeping Shifts
@@ -151,31 +153,31 @@ export const INITIAL_DATA = {
       startTime: "2026-10-25T06:00:00Z",
       endTime: "2026-10-25T14:00:00Z",
       hours: 8.0,
-      hourlyRate: 19.5,
+      hourlyRate: 100.0,
       standardHours: 7.5,
       regularHours: 7.5,
       overtimeHours: 0.5,
-      regularPay: 146.25,
-      overtimePay: 14.63,
-      totalEstimatedEarnings: 160.88,
-      notes: "Science Hall laboratories sanitation schedule"
+      regularPay: 750.0, // 7.5 * 100
+      overtimePay: 75.0,  // 0.5 * (100 * 1.5 = 150)
+      totalEstimatedEarnings: 825.0,
+      notes: "Chemistry Laboratory deep clean and waste segregation"
     },
     {
       id: "sh-202",
       orgId: "org-apexcollege",
       workerId: "w-h2",
-      workerName: "Marcus Miller",
-      startTime: "2026-10-25T14:00:00Z",
-      endTime: "2026-10-25T21:30:00Z",
+      workerName: "Murugan Selvam",
+      startTime: "2026-10-25T13:30:00Z",
+      endTime: "2026-10-25T21:00:00Z",
       hours: 7.5,
-      hourlyRate: 18.0,
+      hourlyRate: 95.0,
       standardHours: 7.5,
       regularHours: 7.5,
       overtimeHours: 0,
-      regularPay: 135.0,
+      regularPay: 712.5,
       overtimePay: 0,
-      totalEstimatedEarnings: 135.0,
-      notes: "West Dormitory commons turnaround"
+      totalEstimatedEarnings: 712.5,
+      notes: "Dining hall and hostel corridor sanitization"
     }
   ],
   reports: [
@@ -186,8 +188,8 @@ export const INITIAL_DATA = {
       workerName: "Muthu Velan",
       category: "SAFETY_HAZARD",
       severity: "CRITICAL",
-      title: "Missing perimeter safety guardrail on 4th floor edge",
-      description: "Scaffold decking on Sector B North has no toe-boards or tether anchors. Strong wind gusts created high fall hazard during afternoon lift.",
+      title: "Missing safety toe-board & perimeter tether on 3rd tier scaffold",
+      description: "Scaffold staging adjacent to Pillar B2 has no guard edge toe-board. High risk of heavy dropped tools hitting workers below during girder lift.",
       status: "OPEN",
       submittedAt: "2026-10-25T09:15:00Z",
       resolutionNote: ""
@@ -196,15 +198,15 @@ export const INITIAL_DATA = {
       id: "rep-302",
       orgId: "org-buildright",
       workerId: "w-c2",
-      workerName: "David Chen",
+      workerName: "Ramesh Kumar",
       category: "EQUIPMENT_ISSUE",
       severity: "MEDIUM",
-      title: "Hydraulic leak on mixer truck discharge chute",
-      description: "Hydraulic fluid dripping near operator walkway causing slippery footing.",
+      title: "Transit mixer chute lever hydraulic oil leak",
+      description: "Hydraulic oil dripping onto walkway ramp creating slip hazard near batching plant.",
       status: "RESOLVED",
       submittedAt: "2026-10-24T11:30:00Z",
       resolvedAt: "2026-10-24T16:00:00Z",
-      resolutionNote: "Chute pressure valve hose replaced by on-site maintenance contractor. Area degreased."
+      resolutionNote: "Hydraulic seal gasket replaced by mechanical team. Area sand-spread and degreased."
     },
     {
       id: "rep-401",
@@ -213,11 +215,11 @@ export const INITIAL_DATA = {
       workerName: "Anandhi Raman",
       category: "CHEMICAL_EXPOSURE",
       severity: "HIGH",
-      title: "Faulty exhaust in chemical dilution supply closet",
-      description: "Ventilation duct in East Wing supply room is non-functional. Strong ammonia fumes accumulate when preparing floor stripper solution.",
+      title: "Broken exhaust ventilation in Science Block chemical dilution closet",
+      description: "Blower exhaust fan in Room 102 is dead. Heavy chlorine and ammonia fumes accumulate when preparing floor sanitizing concentrate.",
       status: "IN_REVIEW",
       submittedAt: "2026-10-25T08:30:00Z",
-      resolutionNote: "Facilities engineering dispatched work order #4491 to replace blower motor."
+      resolutionNote: "Estate electrical engineer dispatched work order #4491 to replace capacitor."
     }
   ]
 };

@@ -1,154 +1,198 @@
 # FairShift 2026
 
-> Transparent Shifts, Fair Pay & Worker Safety for Construction and Campus Support Services.
+> Transparent Shifts, Fair Pay & Worker Safety for Frontline Construction and College Support Services.
 > Built for Hackathon SDG 8 (Decent Work and Economic Growth).
 
-[![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen)](#automated-testing)
-[![SDG](https://img.shields.io/badge/SDG-8%20Decent%20Work-blue)](#mission)
-[![Architecture](https://img.shields.io/badge/Docker-Linux%20Alpine%20Ready-blue)](#cloud-run--docker-deployment)
+[![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)](#automated-testing)
+[![SDG](https://img.shields.io/badge/SDG-8%20Decent%20Work-blue)](#1-chosen-challenge-vertical--sdg-8-problem-statement)
+[![Architecture](https://img.shields.io/badge/Assistant-Context--Aware%20Deterministic-indigo)](#5-fairshift-context-aware-smart-assistant)
 
 ---
 
-## Mission & Purpose
+## 1. Chosen Challenge Vertical & SDG 8 Problem Statement
 
-FairShift addresses acute vulnerability among hourly and informal frontline workers in high-risk, labor-intensive environments—specifically **civil construction sites** and **college campus housekeeping/facilities operations**.
+**Sustainable Development Goal 8 (Decent Work and Economic Growth)** calls for safe, secure working environments and transparent, fair compensation for all workers (Target 8.5 & 8.8).
 
-Frontline workers frequently experience:
-- Lack of transparent, verifiable shift and overtime calculations.
-- Excessive fatigue from back-to-back shifts without mandatory rest intervals.
-- Barriers to voicing safety concerns and physical hazards without fear of retribution.
+Frontline, hourly, and informal workers in physically demanding sectors face acute vulnerabilities:
+- **Opacity in Shift Records & Overtime**: In informal or sub-contracted operations, hours worked beyond standard shift limits are routinely undercounted or arbitrarily rounded down. Frontline workers lack accessible, transparent itemization of how overtime multipliers are calculated.
+- **Excessive Fatigue & Hazardous Rest Deficits**: Back-to-back shifts with insufficient rest intervals (<11 hours) lead to acute exhaustion, dramatically escalating workplace accident risks.
+- **Barriers to Reporting Hazards**: Frontline workers hesitate to report physical hazards or wage discrepancies due to fear of informal retaliation or lack of tracking.
 
-FairShift delivers an accessible, mobile-first progressive application with full English and Tamil localization, deterministic shift pay breakdown, rule-based fatigue alerts, and supervisor-accountable safety tracking.
-
-> **Demonstration & Synthetic Data Notice**:
-> FairShift is configured with self-contained synthetic demonstration scenarios. It does not store or process real personally identifiable information (PII). Role switching between Worker and Employer is provided for demonstration and judging review purposes only and does not imply production access-control or authentication.
+**FairShift** bridges this transparency gap with an accessible, mobile-first progressive platform backed by deterministic calculation models, rule-based fatigue alerts, supervisor-accountable safety tracking, and an embedded context-aware assistant.
 
 ---
 
-## Key Modules & Features
+## 2. Two Fictional Industry Use Cases
 
-### 1. Shift & Pay Transparency
-- **One-Touch Check In / Check Out**: Designed for mobile ergonomics with oversized touch targets and zoom-enabled viewports.
-- **Live Elapsed Duty & Real-Time Estimated Pay**: Displays real-time earnings and highlights whether overtime has begun.
-- **Itemized Earnings Breakdown**: Automatically decomposes recorded shifts into regular hours, overtime hours, base rate, and overtime multiplier earnings.
-- **Clear Legal Disclaimer**: Explicitly states that estimates provide transparency and accountability rather than tax/payroll compliance.
+FairShift focuses specifically on two high-risk, labor-intensive environments using locally grounded synthetic profiles with Indian Rupee (₹) pricing:
 
-### 2. Safety & Grievance Reporting
-- **Multi-Category Incident Logging**: Log structural hazards, equipment failure, extreme fatigue, chemical exposure, or harassment.
-- **Severity Stratification**: Categorize incidents from *Low* to *Critical Life-Safety Risk*.
-- **Accountable & Confidential**: Linked to worker account to prevent supervisor dismissal while protecting worker privacy.
-- **Bidirectional Status Updates**: Workers track supervisor review status (`OPEN`, `IN_REVIEW`, `RESOLVED`, `DISMISSED`) and view actionable resolution notes.
+### Industry 1: Metro Rail & Civil Construction (`BuildRight Infrastructure Ltd`)
+- **Operational Reality**: High-intensity civil construction site (metro underground stations, viaducts, continuous concrete pours).
+- **Frontline Roles**: Rebar & Scaffold Lead (Muthu Velan), Concrete Pouring Technician (Ramesh Kumar), Crane Signal Spotter (Priya Sundaram).
+- **Key Challenges Demonstrated**: Continuous 11-hour shifts with emergency de-shuttering causing critical rest deficits (<10.5h gap between shifts); dropped-tool fall hazards from 3rd-tier scaffolding lacking toe-boards; hydraulic oil leakage around batching transit mixers.
 
-### 3. Operational Dashboard & Rule-Based Fatigue Monitoring
-- **Deterministic Fatigue Engine**: Detects excessive daily hours (>10h threshold), insufficient rest intervals between consecutive shifts (<11h rest), and weekly duty limits (>48h/week).
-- **Organization-Level Rules**: Configurable standard shift limits, overtime multipliers, and safety thresholds.
-- **Actionable Report Management**: Supervisors can inspect details, dispatch maintenance, update statuses, and log resolution notes.
-
-### 4. Cross-Industry Demonstration
-Includes two distinct synthetic scenarios:
-1. **BuildRight Infrastructure Ltd** (Construction & Heavy Civil): Demonstrates structural pours, high fall risk hazards, and extreme rest-deficiency alerts.
-2. **Apex Heights College Facilities** (Higher Ed Support & Housekeeping): Demonstrates dorm and lab sanitization, chemical ventilation hazards, and customized shift rules.
+### Industry 2: College Housekeeping & Support Services (`Apex Heights College Facilities`)
+- **Operational Reality**: Campus facilities management encompassing science laboratories, student residences, and dining commons.
+- **Frontline Roles**: Senior Sanitation Attendant (Anandhi Raman), Hostel & Lab Maintenance Staff (Murugan Selvam).
+- **Key Challenges Demonstrated**: Chemical exposure hazards from broken ventilation in chemical dilution supply rooms; customized 7.5-hour standard shift thresholds with distinct institutional overtime rules.
 
 ---
 
-## Inclusivity & Localization
+## 3. Personas
 
-- **Bilingual Interface**: Full, native English and Tamil (`தமிழ்`) translations for all essential worker interactions, categories, and buttons (zero placeholder text).
-- **Device Independence**: Fully operational without camera, microphone, or GPS permissions.
-- **Accessibility**: Semantic HTML5 elements, high-contrast badges, keyboard focus rings, and touch-optimized sizing with unrestricted viewport scaling.
-
----
-
-## Technical Stack & Architecture
-
-- **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build (`@tailwindcss/vite` without development CDNs).
-- **Backend**: Node.js & Express REST API (`0.0.0.0` with `PORT` environment variable support).
-- **Calculation Core**: Pure deterministic ES modules with comprehensive test suite (`node:test`).
-- **Containerization**: Clean cross-platform multi-stage Dockerfile (`node:20-alpine`) free of platform-specific binaries.
-- **Data Persistence**: In-memory synthetic datastore with persistent client fallback for high-reliability demo presentations.
+| Persona | Role | Key Objectives & Pain Points |
+| :--- | :--- | :--- |
+| **Muthu Velan** | Rebar Lead (Worker) | Wants clear proof of worked hours and calculated overtime (₹130/hr base + 1.5x OT); needs visibility into whether rest gaps between shifts violate health guidelines; needs to know if supervisors have repaired scaffold fall hazards. |
+| **Anandhi Raman** | Sanitation Staff (Worker) | Requires bilingual (Tamil/English) mobile interface; needs to track supervisor work orders on hazardous chemical exhaust fumes in campus dilution closets without fear of dismissal. |
+| **Site Operations Director** | Employer / Supervisor | Monitors workforce fatigue risk across all registered personnel; ensures standard daily shifts and minimum rest periods are respected; resolves worker-submitted grievances with formal documented follow-up notes. |
 
 ---
 
-## Automated Testing
+## 4. FairShift Approach & Solution Logic
 
-Run the deterministic calculation, fatigue, and end-to-end API lifecycle test suite:
+FairShift replaces opaque paper logs and arbitrary supervisor estimates with explicit, deterministic logic:
+1. **Mathematical Determinism**: Pay calculations separate regular hours from overtime hours using configurable organization policies (e.g., 8.0h threshold in construction, 7.5h in campus services; 1.5x wage multiplier).
+2. **Rule-Based Fatigue Monitoring**: Rather than using black-box, unvalidated AI predictions, FairShift checks three deterministic thresholds:
+   - **Daily Duty Limit**: Shift duration $> \text{Max Daily Threshold}$ (e.g., $>10\text{h}$).
+   - **Mandatory Rest Interval**: Gap between the end of shift $i$ and start of shift $i+1 < \text{Min Rest Threshold}$ (e.g., $<11\text{h}$).
+   - **Rolling 7-Day Total**: Aggregate hours over the past 7 days $> \text{Max Weekly Cap}$ (e.g., $>48\text{h}$).
+3. **Supervisor Accountability Loop**: State changes made by employers (`OPEN` $\to$ `IN_REVIEW` $\to$ `RESOLVED`) and resolution notes are reflected instantaneously in the worker's experience.
+
+---
+
+## 5. FairShift Context-Aware Smart Assistant
+
+To meet the evaluation criteria for a smart, dynamic assistant without introducing unpredictable hallucinations or expensive cloud dependencies, FairShift features a **Deterministic Context-Aware Assistant** (`shared/assistant.js`).
+
+### How It Works:
+- **Zero Hallucination / Grounded Execution**: The assistant does not invent numbers or claim legal authority. It queries the actual state of the application: active worker, organization settings, completed shifts, fatigue alerts, and submitted grievance records.
+- **Role & Persona Sensitivity**:
+  - **Worker View**: Focuses on individual net earnings, itemized overtime math, personal fatigue evaluation, safety report statuses, and guidance on reporting hazards.
+  - **Employer View**: Focuses on organization-wide fatigue alerts, unresolved critical safety hazards, aggregate labor costs, and rule threshold reviews.
+- **Bilingual & Low-Literacy Support**: Provides one-click suggested question pills in both **English** and **Tamil (`தமிழ்`)**, enabling frontline workers to receive instant, structured answers with zero typing.
+- **Honest Fallback**: Questions outside verifiable data receive a clear, honest disclaimer explaining what data is available.
+
+---
+
+## 6. Architecture & Technology Stack
+
+```mermaid
+flowchart TD
+    subgraph Client["Frontend (React 18 + Vite + Tailwind v4)"]
+        UI[Dual Interface: Worker / Employer]
+        AST[Context-Aware Smart Assistant]
+        CALC_FE[Deterministic Calculations & State Engine]
+        I18N[Tamil / English Localization]
+    end
+
+    subgraph Backend["API Layer (Node.js 20 + Express)"]
+        REST[REST API: 0.0.0.0:8080]
+        VAL[Schema & Enum Validation Layer]
+        STORE[(In-Memory Synthetic Data Store)]
+    end
+
+    UI --> CALC_FE
+    AST --> CALC_FE
+    UI --> REST
+    AST --> REST
+    REST --> VAL --> STORE
+```
+
+- **Frontend**: React 18, Vite, Tailwind CSS v4 compiled build (clean native CSS compilation via `@tailwindcss/vite`, no development CDNs).
+- **Backend**: Lightweight Node.js/Express REST server listening on `0.0.0.0` and dynamic `PORT`.
+- **Validation**: Strict server-side payload validation for organization boundaries, enums (`VALID_CATEGORIES`, `VALID_SEVERITIES`, `VALID_STATUSES`), and non-empty sanitized strings.
+- **Containerization**: Multi-stage Dockerfile (`node:20-alpine`) ready for Google Cloud Run deployment.
+
+---
+
+## 7. Key Working Features
+
+1. **Shift Check In & Check Out**: Live elapsed timer and real-time counter displaying estimated earnings and overtime activation.
+2. **Shift History & Pay Breakdown**: Itemizes regular hours, overtime hours, base hourly pay, overtime rate, and total estimated earnings with Indian Rupee (₹) currency formatting.
+3. **Safety & Grievance Reporting**: Category and severity selection (Low to Critical Risk), confidential account-linked tracking, and real-time status progression.
+4. **Employer Operations Dashboard**: Aggregated metrics on active workforce, duty hours, overtime ratios, and pending safety concerns.
+5. **Rule-Based Fatigue Monitor**: Alerts supervisors with specific reasons (excessive daily shift or short recovery rest gap) and calculates 7-day rolling totals.
+6. **Bilingual Toggle**: Seamless switching between English and native Tamil (`தமிழ்`) with zero placeholder text.
+
+---
+
+## 8. Automated Testing & Verification
+
+Run the comprehensive test suite (23 automated tests passing):
 
 ```bash
 npm test
 ```
 
-### Verified Test Suite (16 Automated Tests Passing)
-- `calculateDurationHours`: Verified accurate decimal hour calculation and inverted timestamp rejection.
-- `calculateShiftEarnings`: Verified exact regular pay calculations.
-- `calculateShiftEarnings`: Verified overtime math with custom multipliers.
-- `evaluateFatigueRisk`: Verified daily duty limit threshold warnings.
-- `evaluateFatigueRisk`: Verified critical alerts for insufficient rest periods between shifts.
-- `Seed data isolation`: Verified strict separation between construction and college organization datasets.
-- `GET /api/health`: Verified healthcheck response and synthetic data disclosure.
-- `GET /api/org/:orgId/data`: Scoped retrieval verifying data isolation.
-- `POST /api/shifts/check-in`: Validated organization membership and rejected cross-org worker injection.
-- `POST /api/reports`: Validated issue categories, severity enums, and required fields.
-- `PATCH /api/reports/:id`: Verified status transitions (`OPEN` -> `RESOLVED`) and supervisor resolution notes.
-- `POST /api/shifts/check-out`: Full check-in to check-out calculation lifecycle.
+### Verified Test Breakdown:
+- **Assistant Tests (`test/assistant.test.js`)**:
+  - Dynamic earnings calculations matching selected worker.
+  - Fatigue warning identification for fatigued workers.
+  - Native Tamil assistant responses.
+  - Employer unresolved critical hazard identification.
+  - Real-time assistant response updates when report status changes.
+  - Cross-industry threshold differentiation (Construction vs College).
+  - Non-hallucinatory fallback handling for out-of-scope queries.
+- **Calculations Tests (`test/calculations.test.js`)**:
+  - `calculateDurationHours`: Verified decimal hours and inverted timestamp rejection.
+  - `calculateShiftEarnings`: Verified regular and overtime pay calculations.
+  - `evaluateFatigueRisk`: Verified daily limit and insufficient rest interval detection.
+  - Data partitioning between organizations.
+- **Server API Lifecycle Tests (`test/server_api.test.js`)**:
+  - `GET /api/health`: Healthcheck, version, and synthetic data disclosure.
+  - `GET /api/org/:id/data`: Scoped retrieval verifying data isolation.
+  - `POST /api/shifts/check-in`: Rejection of cross-org worker mismatches.
+  - `POST /api/reports`: Schema validation and initial `OPEN` state.
+  - `PATCH /api/reports/:id`: Status transitions and supervisor notes.
+  - `POST /api/shifts/check-out`: Full calculation cycle.
 
 ---
 
-## Running Locally
+## 9. Running Locally
 
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/RoshwinNiketh/fairshift.git
    cd fairshift
    ```
-
 2. **Install dependencies**:
    ```bash
    npm install
    ```
-
 3. **Build the production frontend**:
    ```bash
    npm run build
    ```
-
 4. **Start the production server**:
    ```bash
    npm start
    ```
-   Open `http://localhost:8080` in your browser.
+   Open `http://localhost:8080` in your web browser.
 
 ---
 
-## Google Cloud Run Deployment
+## 10. Accessibility & Inclusivity
 
-FairShift is packaged as a standard container listening on `0.0.0.0:${PORT}`:
-
-### Option A: Direct Google Cloud Run Deployment (Source-based)
-```bash
-gcloud run deploy fairshift \
-  --source . \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080
-```
-
-### Option B: Cloud Build & Container Registry
-```bash
-# 1. Build and push image to Google Artifact Registry
-gcloud builds submit --tag gcr.io/[PROJECT_ID]/fairshift:latest
-
-# 2. Deploy to Cloud Run
-gcloud run deploy fairshift \
-  --image gcr.io/[PROJECT_ID]/fairshift:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --port 8080
-```
+- **Viewport Scalability**: Supports pinch-to-zoom (`user-scalable=yes`) for mobile accessibility.
+- **Large Touch Targets**: Minimum 48px interactive touch targets for workers with gloves or small screens.
+- **High-Contrast Focus Indicators**: Visible keyboard focus states (`outline: 2px solid #22c55e`).
+- **Device Independence**: Fully functional without requiring camera, GPS, or microphone hardware permissions.
 
 ---
 
-## License & Attribution
+## 11. Assumptions, Limitations & Disclaimers
 
-Developed for PromptWars / SDG 8 Hackathon 2026. All synthetic data and personnel profiles are fictional.
+1. **Synthetic Data Disclosure**: All organizations, worker names, phone numbers, and logged incidents are fictional synthetic fixtures created exclusively for hackathon evaluation.
+2. **In-Memory Store**: State modifications persist in memory for the duration of the server process. When the server is offline, the client continues functioning via local state simulation.
+3. **Non-Payroll Compliance Disclaimer**: FairShift provides estimated calculations for workplace transparency and personal verification. It does not constitute official legal payroll compliance, binding tax calculations, or statutory wage Slips.
+4. **Confidential vs Anonymous Reporting**: Reports are confidential and account-linked so supervisors can be held accountable for resolving them; true anonymous reporting without worker identity is intentionally not claimed.
+5. **Demonstration Role Selector**: The UI role selector is provided for judging convenience and does not enforce cryptographic multi-tenant RBAC.
+
+---
+
+## 12. Future Scalability (Roadmap)
+
+- **Cloud Datastore / Firestore Integration**: Seamless handoff from the in-memory repository to Google Cloud Firestore when cloud credentials are fully provisioned.
+- **Offline PWA & Service Workers**: Background sync for shift check-ins and hazard reports in remote construction basements with intermittent cellular connectivity.
+- **Voice Assistant Integration**: Web Speech API for voice-driven prompt interaction in Tamil and other regional languages.
+- **Digital Grievance Whistleblower Protocol**: Zero-knowledge proof (ZKP) grievance verification for escalated external regulatory reviews.
