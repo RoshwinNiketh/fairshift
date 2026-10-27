@@ -1,0 +1,185 @@
+export const translations = {
+  en: {
+    appName: "FairShift",
+    tagline: "Transparent Shifts, Fair Pay & Worker Safety",
+    sdgBadge: "SDG 8: Decent Work & Economic Growth",
+    disclaimer: "Estimates are for transparency and verification purposes only. This tool does not constitute official legal payroll compliance or binding tax documentation.",
+    syntheticDataNote: "Demonstration Mode: Synthetic Data Active",
+    
+    // Role selection
+    switchRole: "Switch View",
+    workerRole: "Worker View",
+    employerRole: "Employer Operations",
+    activeOrg: "Organization",
+    selectWorker: "Select Active Worker",
+
+    // Worker View
+    activeShift: "Active Shift",
+    noActiveShift: "No shift currently active. Ready to check in?",
+    checkIn: "Check In",
+    checkOut: "Check Out",
+    checkingIn: "Checking in...",
+    checkingOut: "Checking out...",
+    shiftStartedAt: "Checked in at",
+    elapsedTime: "Elapsed time",
+    estimatedLivePay: "Estimated Pay Earned",
+    hourlyRateLabel: "Base Hourly Rate",
+    standardHoursLimit: "Standard Shift Threshold",
+
+    // Shift History & Pay Breakdown
+    recentShifts: "Shift & Earnings History",
+    noShiftsRecorded: "No shift records yet.",
+    date: "Date",
+    duration: "Duration",
+    regularHours: "Regular Hours",
+    overtimeHours: "Overtime Hours",
+    regularPay: "Regular Pay",
+    overtimePay: "Overtime Pay",
+    totalEstimatedEarnings: "Total Estimated Pay",
+    overtimeBadge: "Overtime Applied",
+
+    // Safety & Grievance
+    reportSafetyIssue: "Report Safety Concern / Grievance",
+    reportDescriptionHelp: "Provide clear details to help supervisors resolve the concern quickly.",
+    issueTitle: "Issue Summary / Title",
+    issueCategory: "Category",
+    severity: "Severity",
+    description: "Detailed Description",
+    submitReport: "Submit Report",
+    submittingReport: "Submitting...",
+    myReports: "My Submitted Reports",
+    noReportsYet: "You haven't submitted any reports.",
+    status: "Status",
+    statusOpen: "Open / Pending",
+    statusInReview: "Under Review",
+    statusResolved: "Resolved",
+    statusDismissed: "Dismissed",
+    resolutionNotes: "Supervisor Resolution Notes",
+    confidentialNotice: "Notice: Reports are confidential and account-linked for supervisor accountability. Anonymous reports without worker identity are not supported.",
+
+    // Severities
+    severityLow: "Low",
+    severityMedium: "Medium",
+    severityHigh: "High",
+    severityCritical: "Critical Risk",
+
+    // Categories
+    catSafetyHazard: "Physical Safety Hazard",
+    catEquipment: "Equipment Defect / Failure",
+    catExcessiveFatigue: "Excessive Fatigue / Overwork",
+    catChemicalExposure: "Chemical / Environmental Hazard",
+    catPayDiscrepancy: "Pay or Hours Discrepancy",
+    catWorkplaceHarassment: "Workplace Harassment / Grievance",
+
+    // Employer Dashboard
+    employerDashboard: "Operational Workforce Dashboard",
+    activeWorkers: "Registered Workers",
+    totalHoursWorked: "Total Recorded Hours",
+    totalOvertimeHours: "Total Overtime Hours",
+    pendingConcerns: "Active Safety Concerns",
+    fatigueRiskAlerts: "Fatigue & Hours Alerts",
+    fatigueAlertSummary: "Worker fatigue monitoring based on daily duty limits and required rest intervals.",
+    noFatigueAlerts: "All workers currently within safe duty and rest thresholds.",
+    manageReports: "Worker Safety & Grievance Management",
+    updateStatus: "Update Status",
+    addResolutionNote: "Resolution / Follow-up Note",
+    saveUpdate: "Save Update",
+    orgConfigTitle: "Organization Work Rules & Pay Configuration",
+    dailyThreshold: "Standard Shift (Hours/Day)",
+    otMultiplier: "Overtime Pay Multiplier",
+    maxDailyThreshold: "Max Safe Daily Limit (Hours)",
+    minRestInterval: "Min Rest Interval (Hours)"
+  },
+
+  ta: {
+    appName: "ஃபேர்ஷிஃப்ட் (FairShift)",
+    tagline: "வெளிப்படையான பணி நேரம், நியாயமான ஊதியம் மற்றும் தொழிலாளர் பாதுகாப்பு",
+    sdgBadge: "SDG 8: கண்ணியமான வேலை மற்றும் பொருளாதார வளர்ச்சி",
+    disclaimer: "மதிப்பீடுகள் வெளிப்படைத்தன்மை மற்றும் சரிபார்ப்பு நோக்கங்களுக்காக மட்டுமே. இது சட்டப்பூர்வ சம்பளப் பட்டியல் அல்ல.",
+    syntheticDataNote: "டெமோ முறை: மாதிரி தரவு இயக்கத்தில் உள்ளது",
+    
+    // Role selection
+    switchRole: "பார்வை மாற்றம்",
+    workerRole: "தொழிலாளர் பக்கம்",
+    employerRole: "நிர்வாகக் குழு பக்கம்",
+    activeOrg: "நிறுவனம்",
+    selectWorker: "தொழிலாளரைத் தேர்வுசெய்க",
+
+    // Worker View
+    activeShift: "தற்போதைய பணி நேரம் (ஷிஃப்ட்)",
+    noActiveShift: "தற்போது எந்த ஷிஃப்ட்டும் தொடங்கப்படவில்லை. பணியைத் தொடங்க தயாரா?",
+    checkIn: "பணியைத் தொடங்கு (Check In)",
+    checkOut: "பணியை முடி (Check Out)",
+    checkingIn: "தொடங்குகிறது...",
+    checkingOut: "முடிவடைகிறது...",
+    shiftStartedAt: "தொடங்கிய நேரம்",
+    elapsedTime: "கடந்த நேரம்",
+    estimatedLivePay: "மதிப்பிடப்பட்ட சம்பளம்",
+    hourlyRateLabel: "மணி நேர ஊதியம்",
+    standardHoursLimit: "வழக்கமான ஷிஃப்ட் அளவு",
+
+    // Shift History & Pay Breakdown
+    recentShifts: "ஷிஃப்ட் மற்றும் சம்பள வரலாறு",
+    noShiftsRecorded: "இதுவரை எந்த பதிவும் இல்லை.",
+    date: "தேதி",
+    duration: "பணி நேரம்",
+    regularHours: "வழக்கமான மணிநேரம்",
+    overtimeHours: "கூடுதல் பணி நேரம் (OT)",
+    regularPay: "வழக்கமான சம்பளம்",
+    overtimePay: "கூடுதல் நேர சம்பளம் (OT Pay)",
+    totalEstimatedEarnings: "மொத்த உத்தேச சம்பளம்",
+    overtimeBadge: "OT கணக்கிடப்பட்டது",
+
+    // Safety & Grievance
+    reportSafetyIssue: "பாதுகாப்பு குறைபாடு / புகாரைப் பதிவுசெய்க",
+    reportDescriptionHelp: "மேற்பார்வையாளர்கள் விரைவாக சரிசெய்ய தெளிவான விவரங்களை வழங்கவும்.",
+    issueTitle: "சிக்கலின் சுருக்கம் / தலைப்பு",
+    issueCategory: "பிரிவு",
+    severity: "தீவிரம்",
+    description: "முழு விவரம்",
+    submitReport: "புகாரை அனுப்புக",
+    submittingReport: "அனுப்பப்படுகிறது...",
+    myReports: "எனது புகார்கள் & நிலை",
+    noReportsYet: "நீங்கள் இதுவரை புகார்கள் எதையும் பதிவு செய்யவில்லை.",
+    status: "தற்போதைய நிலை",
+    statusOpen: "நிலுவையில் உள்ளது",
+    statusInReview: "பரிசீலனையில் உள்ளது",
+    statusResolved: "சரிசெய்யப்பட்டது",
+    statusDismissed: "நிராகரிக்கப்பட்டது",
+    resolutionNotes: "மேற்பார்வையாளர் தீர்வு குறிப்புகள்",
+    confidentialNotice: "அறிவிப்பு: புகார்கள் ரகசியமானவை மற்றும் தொழிலாளர் கணக்குடன் இணைக்கப்பட்டவை. பெயரில்லாத புகார்கள் ஏற்கப்படாது.",
+
+    // Severities
+    severityLow: "குறைவு",
+    severityMedium: "நடுத்தரம்",
+    severityHigh: "அதிதீவிரம்",
+    severityCritical: "உயிராபத்து அபாயம்",
+
+    // Categories
+    catSafetyHazard: "உடற்காய பாதுகாப்பு அபாயம்",
+    catEquipment: "கருவி / இயந்திர பழுது",
+    catExcessiveFatigue: "அதிகப்படியான சோர்வு / கூடுதல் சுமை",
+    catChemicalExposure: "வேதியியல் / நச்சு ஆபத்து",
+    catPayDiscrepancy: "சம்பளம் அல்லது நேர முரண்பாடு",
+    catWorkplaceHarassment: "பணியிட துன்புறுத்தல் / மனக்குறை",
+
+    // Employer Dashboard
+    employerDashboard: "பணியாளர் செயல்பாட்டு பலகை (Dashboard)",
+    activeWorkers: "பதிவுசெய்த தொழிலாளர்கள்",
+    totalHoursWorked: "மொத்த பணி நேரம்",
+    totalOvertimeHours: "மொத்த OT நேரம்",
+    pendingConcerns: "நிலுவையில் உள்ள பாதுகாப்பு புகார்கள்",
+    fatigueRiskAlerts: "சோர்வு & பணி வரம்பு எச்சரிக்கைகள்",
+    fatigueAlertSummary: "தினசரி பணி வரம்பு மற்றும் தேவையான ஓய்வு இடைவெளியின் அடிப்படையிலான எச்சரிக்கை.",
+    noFatigueAlerts: "அனைத்து தொழிலாளர்களும் பாதுகாப்பான பணி மற்றும் ஓய்வு வரம்பிற்குள் உள்ளனர்.",
+    manageReports: "பாதுகாப்பு மற்றும் குறைதீர்ப்பு மேலாண்மை",
+    updateStatus: "நிலையை மாற்று",
+    addResolutionNote: "தீர்வு அல்லது நடவடிக்கை குறிப்பு",
+    saveUpdate: "சேமிக்கவும்",
+    orgConfigTitle: "நிறுவன விதிகள் & ஊதிய கட்டமைப்பு",
+    dailyThreshold: "வழக்கமான ஷிஃப்ட் (மணி/நாள்)",
+    otMultiplier: "OT ஊதியப் பெருக்கி",
+    maxDailyThreshold: "பாதுகாப்பான அதிகபட்ச பணி நேரம் (மணி)",
+    minRestInterval: "குறைந்தபட்ச ஓய்வு இடைவெளி (மணி)"
+  }
+};
