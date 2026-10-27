@@ -7,15 +7,8 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
-  },
+  server: { port: 3000, host: '127.0.0.1', strictPort: true },
+  preview: { host: '127.0.0.1', strictPort: true },
   build: {
     outDir: 'dist',
     emptyOutDir: true

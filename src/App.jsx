@@ -20,10 +20,13 @@ export default function App({ cloud = null }) {
   const t = translations[lang] || translations.en;
 
   // Global State (Managed through verified versioned local demo storage)
-  const [currentOrgId, setCurrentOrgId] = useState(cloud?.data.organization.id || 'org-buildright');
-  const [role, setRole] = useState(cloud?.role || 'worker');
+  const [demoOrgId, setCurrentOrgId] = useState('org-buildright');
+  const currentOrgId = cloud?.data.organization.id || demoOrgId;
+  const [demoRole, setRole] = useState('worker');
+  const role = cloud?.role || demoRole;
   
-  const [orgData, setOrgData] = useState(() => cloud?.data || getLocalOrgData('org-buildright'));
+  const [demoData, setOrgData] = useState(() => cloud?.data || getLocalOrgData('org-buildright'));
+  const orgData = cloud?.data || demoData;
   const [currentWorkerId, setCurrentWorkerId] = useState(cloud?.data.workers[0]?.id || 'w-c1');
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -50,7 +53,8 @@ export default function App({ cloud = null }) {
 
   // Sync state from storage whenever orgId or language changes
   const refreshCurrentOrg = async (orgId = currentOrgId) => {
-    const data = cloud ? await cloud.refresh(orgId) : getLocalOrgData(orgId);
+    if (cloud) return cloud.refresh(orgId);
+    const data = getLocalOrgData(orgId);
     setOrgData(data);
     // P0/P2 Fix: Ensure currentWorkerId belongs to this organization
     setCurrentWorkerId(prevId => {
@@ -60,9 +64,9 @@ export default function App({ cloud = null }) {
   };
 
   useEffect(() => {
-    refreshCurrentOrg(currentOrgId).catch(err => showToast(err.message, 'error'));
+    if (!cloud) refreshCurrentOrg(currentOrgId).catch(err => showToast(err.message, 'error'));
   }, [currentOrgId, lang]);
-  useEffect(() => { if (cloud?.data) setOrgData(cloud.data); }, [cloud?.data]);
+
 
   const { organization: currentOrg, workers, shifts, reports, fatigueAlerts: storedFatigueAlerts } = orgData;
   // Use the existing calculation engine's translated messages without changing its rules.

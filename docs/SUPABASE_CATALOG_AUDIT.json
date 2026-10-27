@@ -1,0 +1,755 @@
+{
+  "tables": [
+    {
+      "rls": true,
+      "name": "organizations",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "user_profiles",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "organization_memberships",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "workers",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "shifts",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "safety_reports",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "skill_passport_entries",
+      "owner": "postgres"
+    },
+    {
+      "rls": true,
+      "name": "worker_feedback",
+      "owner": "postgres"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "fairshift_private.is_member(id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organizations",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_organizations_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_profiles_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_profiles_update",
+      "schemaname": "public",
+      "with_check": "(id = ( SELECT auth.uid() AS uid))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_memberships",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_memberships_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(fairshift_private.owns_worker(id, org_id) OR fairshift_private.is_employer(org_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "workers",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_workers_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(fairshift_private.owns_worker(worker_id, org_id) OR fairshift_private.is_employer(org_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "shifts",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_shifts_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(fairshift_private.owns_worker(worker_id, org_id) OR fairshift_private.is_employer(org_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "safety_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_reports_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "safety_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_reports_insert",
+      "schemaname": "public",
+      "with_check": "(fairshift_private.owns_worker(worker_id, org_id) AND (status = 'OPEN'::text) AND (resolution_note = ''::text) AND (resolved_by IS NULL) AND (resolved_at IS NULL))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "fairshift_private.is_employer(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "safety_reports",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_reports_update",
+      "schemaname": "public",
+      "with_check": "fairshift_private.is_employer(org_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(fairshift_private.owns_worker(worker_id, org_id) OR fairshift_private.is_employer(org_id))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "skill_passport_entries",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_skills_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "skill_passport_entries",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_skills_insert",
+      "schemaname": "public",
+      "with_check": "(fairshift_private.owns_worker(worker_id, org_id) AND (verification_status = 'SELF_REPORTED'::text))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "fairshift_private.owns_worker(worker_id, org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "skill_passport_entries",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_skills_update",
+      "schemaname": "public",
+      "with_check": "(fairshift_private.owns_worker(worker_id, org_id) AND (verification_status = 'SELF_REPORTED'::text))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "fairshift_private.owns_worker(worker_id, org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "worker_feedback",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_feedback_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "worker_feedback",
+      "permissive": "PERMISSIVE",
+      "policyname": "fs_feedback_insert",
+      "schemaname": "public",
+      "with_check": "fairshift_private.owns_worker(worker_id, org_id)"
+    }
+  ],
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "fairshift_check_in",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "public",
+      "definer": false
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "fairshift_check_out",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "public",
+      "definer": false
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "fairshift_feedback_summary",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "public",
+      "definer": false
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "name": "report_audit",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "is_member",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "is_employer",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "owns_worker",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "check_in",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "check_out",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "feedback_summary",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "name": "create_profile",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "schema": "fairshift_private",
+      "definer": true
+    }
+  ],
+  "table_grants": [
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "organizations",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "user_profiles",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "organization_memberships",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "workers",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "shifts",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "SELECT",
+      "with_hierarchy": "YES"
+    }
+  ],
+  "column_grants": [
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "category",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "comment",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "communication",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "completion_date",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "completion_date",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "course",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "course",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "description",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "environment",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "fairness",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "user_profiles",
+      "column_name": "full_name",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "industry",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "industry",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "issuer",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "issuer",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "org_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "org_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "org_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "proficiency",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "proficiency",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "resolution_note",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "safety",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "satisfaction",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "severity",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "skill",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "skill",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "status",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "title",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "safety_reports",
+      "column_name": "worker_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "skill_passport_entries",
+      "column_name": "worker_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "grantor": "postgres",
+      "table_name": "worker_feedback",
+      "column_name": "worker_id",
+      "is_grantable": "NO",
+      "table_schema": "public",
+      "table_catalog": "postgres",
+      "privilege_type": "INSERT"
+    }
+  ],
+  "private_schema": {
+    "anon_usage": false,
+    "authenticated_create": false
+  }
+}

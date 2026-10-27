@@ -3,3 +3,12 @@ node_modules
 .DS_Store
 dist
 *.log
+
+.env
+.env.*
+.qa-accounts.local
+*.local
+artifacts
+docs
+test
+supabase

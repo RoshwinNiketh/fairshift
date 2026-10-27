@@ -25,3 +25,10 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Explicit credential and temporary verification exclusions
+.env.local
+.qa-accounts.local
+.artifacts/
+.tmp/
+security-results.local.json

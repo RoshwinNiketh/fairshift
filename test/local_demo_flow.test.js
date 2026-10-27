@@ -25,7 +25,7 @@ class BrowserSessionStorage {
 
 global.window = { localStorage: new BrowserSessionStorage() };
 
-test('Browser Smoke Test Flow: Check-in, Reload, Check-out, Grievance, Resolution, Assistant Isolation & Reset', async (t) => {
+test('Mocked local demo flow: Check-in, Reload, Check-out, Grievance, Resolution, Assistant Isolation & Reset', async (t) => {
   // Step 0: Initial load
   await t.test('1. Load Worker Dashboard (BuildRight Construction)', () => {
     resetStoredState();
